@@ -10,16 +10,28 @@ app.use(express.static('public'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }))
  
-const usersRoutes = require('./routes/users');
-app.use('/users', usersRoutes);
+const usersRouter = require('./routes/users');
+app.use('/users', usersRouter);
 
 
-var server = app.listen(5555, function ()
-{
-  var host = server.address().address
-  var port = server.address().port
+const artistsRouter = require('./routes/artists');
+app.use('/artists', artistsRouter);
 
-  console.log("Example app listening at http://%s:%s", host, port)
-})
+
+
+
+// var server = app.listen(5555, function ()
+// {
+//   var host = server.address().address
+//   var port = server.address().port
+
+//   console.log("Example app listening at http://%s:%s", host, port)
+// })
+const PORT = 5555;
+
+app.listen(PORT, () => {
+  console.log(`✅ Server is running at http://localhost:${PORT}`);
+});
+
 
 
