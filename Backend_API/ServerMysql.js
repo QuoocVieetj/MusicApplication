@@ -13,11 +13,14 @@ app.use(bodyParser.urlencoded({ extended: true }))
 const usersRouter = require('./routes/users');
 app.use('/users', usersRouter);
 
-
 const artistsRouter = require('./routes/artists');
 app.use('/artists', artistsRouter);
+
 const albumsRouter = require('./routes/albums');
 app.use('/albums', albumsRouter);
+
+const songsRouter = require('./routes/songs');
+app.use('/songs', songsRouter);
 
 
 
