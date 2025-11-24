@@ -12,16 +12,13 @@ import {
 import SearchIcon from "../../assets/icons/search.svg";
 import PlayIcon from "../../assets/icons/play.svg";
 
-const HomeScreen = () => {
+const HomeScreen = ({ onNavigateToList }) => {
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        
-        {/* Header */}
         <Text style={styles.helloText}>Xin chào Vini,</Text>
         <Text style={styles.subText}>Hôm nay bạn muốn nghe gì?</Text>
 
-        {/* Search */}
         <View style={styles.searchContainer}>
           <SearchIcon width={20} height={20} fill="#777" />
           <TextInput
@@ -31,7 +28,6 @@ const HomeScreen = () => {
           />
         </View>
 
-        {/* Tabs */}
         <View style={styles.tabRow}>
           <View style={styles.tabItem}>
             <Text style={[styles.tabText, styles.tabActive]}>Gợi ý</Text>
@@ -39,11 +35,10 @@ const HomeScreen = () => {
           </View>
 
           <Text style={styles.tabText}>Thịnh hành</Text>
-          <Text style={styles.tabText}>Ca sĩ</Text>
-          <Text style={styles.tabText}>Album</Text>
+          <Text style={styles.tabText}>Làm đẹp</Text>
+          <Text style={styles.tabText}>Kinh doanh</Text>
         </View>
 
-        {/* Playlist Cards */}
         <View style={styles.cardRow}>
           <View style={styles.card}>
             <Image
@@ -64,15 +59,13 @@ const HomeScreen = () => {
           </View>
         </View>
 
-        {/* Recently Play */}
         <View style={styles.recentHeaderRow}>
           <Text style={styles.recentHeader}>Phát gần đây</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={onNavigateToList}>
             <Text style={styles.seeAll}>Xem tất cả</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Recently Items */}
         {[1, 2, 3].map((i) => (
           <View key={i} style={styles.recentItem}>
             <Image
@@ -82,7 +75,9 @@ const HomeScreen = () => {
 
             <View style={{ flex: 1 }}>
               <Text style={styles.recentTitle}>Mehabooba</Text>
-              <Text style={styles.recentArtist}>Kgf Chapter 2 • Ananya Bhat</Text>
+              <Text style={styles.recentArtist}>
+                Kgf Chapter 2 • Ananya Bhat
+              </Text>
               <Text style={styles.recentTime}>
                 2:50 / <Text style={{ color: "#24F7BC" }}>3:50</Text>
               </Text>
@@ -93,7 +88,6 @@ const HomeScreen = () => {
             </View>
           </View>
         ))}
-
       </ScrollView>
     </View>
   );
@@ -101,6 +95,7 @@ const HomeScreen = () => {
 
 export default HomeScreen;
 
+// ----- Styles y chang bản trước -----
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -108,20 +103,8 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingHorizontal: 20,
   },
-
-  /* HEADER */
-  helloText: { 
-    color: "#fff", 
-    fontSize: 22, 
-    fontWeight: "700" 
-  },
-  subText: { 
-    color: "#999", 
-    fontSize: 14,
-    marginBottom: 20 
-  },
-
-  /* SEARCH BAR */
+  helloText: { color: "#fff", fontSize: 22, fontWeight: "700" },
+  subText: { color: "#999", fontSize: 14, marginBottom: 20 },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -131,30 +114,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 22,
   },
-  searchInput: { 
-    color: "#fff", 
-    marginLeft: 10,
-    flex: 1,
-  },
-
-  /* TABS */
-  tabRow: {
-    textAlign: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  tabItem: {
-    alignItems: "center",
-  },
-  tabText: { 
-    color: "#777", 
-    fontSize: 14 
-  },
-  tabActive: { 
-    color: "#24F7BC", 
-    fontWeight: "600" 
-  },
+  searchInput: { color: "#fff", marginLeft: 10, flex: 1 },
+  tabRow: { flexDirection: "row", marginBottom: 20, gap: 25 },
+  tabItem: { alignItems: "center" },
+  tabText: { color: "#777", fontSize: 14 },
+  tabActive: { color: "#24F7BC", fontWeight: "600" },
   tabUnderline: {
     height: 3,
     width: 25,
@@ -162,53 +126,23 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginTop: 4,
   },
-
-  /* PLAYLIST CARDS */
-  cardRow: { 
-    flexDirection: "row", 
-    gap: 15, 
-    marginBottom: 25 
-  },
+  cardRow: { flexDirection: "row", gap: 15, marginBottom: 25 },
   card: {
     backgroundColor: "#1C1F26",
     borderRadius: 15,
     padding: 10,
     width: 150,
-    elevation: 3,
   },
-  cardImage: {
-    width: "100%",
-    height: 100,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  cardTitle: { 
-    color: "#fff", 
-    fontWeight: "700",
-    fontSize: 15,
-  },
-  cardSubtitle: { 
-    color: "#bbb", 
-    fontSize: 12,
-    marginTop: 3,
-  },
-
-  /* RECENTLY PLAY */
+  cardImage: { width: "100%", height: 100, borderRadius: 12, marginBottom: 12 },
+  cardTitle: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  cardSubtitle: { color: "#bbb", fontSize: 12, marginTop: 3 },
   recentHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 15,
   },
-  recentHeader: { 
-    color: "#fff", 
-    fontSize: 18, 
-    fontWeight: "700" 
-  },
-  seeAll: { 
-    color: "#24F7BC", 
-    fontSize: 14 
-  },
-
+  recentHeader: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  seeAll: { color: "#24F7BC", fontSize: 14 },
   recentItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -217,28 +151,10 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 15,
   },
-  recentImage: { 
-    width: 60, 
-    height: 60, 
-    borderRadius: 10, 
-    marginRight: 15 
-  },
-  recentTitle: { 
-    color: "#fff", 
-    fontWeight: "700",
-    fontSize: 15,
-  },
-  recentArtist: { 
-    color: "#aaa", 
-    fontSize: 12,
-    marginTop: 3,
-  },
-  recentTime: { 
-    color: "#ccc", 
-    fontSize: 12,
-    marginTop: 2,
-  },
-
+  recentImage: { width: 60, height: 60, borderRadius: 10, marginRight: 15 },
+  recentTitle: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  recentArtist: { color: "#aaa", fontSize: 12, marginTop: 3 },
+  recentTime: { color: "#ccc", fontSize: 12, marginTop: 2 },
   playButton: {
     width: 34,
     height: 34,

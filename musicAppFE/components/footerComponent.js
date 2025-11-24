@@ -10,6 +10,7 @@ import ListIcon from "../assets/icons/list.svg";
 
 const FooterComponent = () => {
   const [activeTab, setActiveTab] = useState("home");
+  
 
   return (
     <View style={styles.footerContainer}>
