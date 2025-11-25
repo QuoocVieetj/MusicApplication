@@ -8,21 +8,38 @@ import {
   SafeAreaView,
   ScrollView,
   ImageBackground,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
+
 import { LinearGradient } from "expo-linear-gradient";
+
+import { auth } from "../../firebaseConfig";
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
 
 const bgImage = require("../../assets/image/bgrLogin.jpg");
 
 // Gradient Button
-const GradientButton = ({ title, onPress }) => (
+const GradientButton = ({ title, onPress, loading }) => (
   <LinearGradient
     colors={["#24F7BC", "#24C4FC"]}
     start={{ x: 0, y: 0 }}
     end={{ x: 1, y: 1 }}
     style={styles.gradientButton}
   >
-    <TouchableOpacity style={styles.gradientButtonInner} onPress={onPress}>
-      <Text style={styles.buttonText}>{title}</Text>
+    <TouchableOpacity
+      style={styles.gradientButtonInner}
+      onPress={onPress}
+      disabled={loading}
+    >
+      {loading ? (
+        <ActivityIndicator size="small" color="#0F1B2E" />
+      ) : (
+        <Text style={styles.buttonText}>{title}</Text>
+      )}
     </TouchableOpacity>
   </LinearGradient>
 );
@@ -58,15 +75,79 @@ const CustomInput = ({
   </View>
 );
 
-const RegisterScreen = ({ onNavigateToLogin }) => {
+const RegisterScreen = ({ onNavigateToLogin, onRegisterSuccess }) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const [loading, setLoading] = useState(false);
+
+  const registerUser = async () => {
+    if (!name || !email || !password) {
+      Alert.alert("Lỗi", "Vui lòng nhập đầy đủ thông tin");
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert("Lỗi", "Mật khẩu phải có ít nhất 6 ký tự");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // 1) Tạo user trên Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const user = userCredential.user;
+
+      // 2) Update tên hiển thị
+      await updateProfile(user, { displayName: name });
+
+      // 3) Lấy ID Token
+      const idToken = await user.getIdToken(true);
+
+      // 4) Gửi qua backend để lưu Firestore
+      const response = await fetch("http://192.168.1.71:8386/api/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          userId: user.uid,
+          displayName: name,
+          email: email,
+          avatarUrl: "",
+          likedSongs: [],
+          playlists: [],
+          createdAt: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Không thể lưu user vào server");
+      }
+
+      Alert.alert("Thành công", "Tạo tài khoản thành công!");
+      onRegisterSuccess && onRegisterSuccess();
+
+    } catch (error) {
+      console.log("❌ Register error:", error);
+      Alert.alert("Lỗi", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ImageBackground source={bgImage} resizeMode="cover" style={styles.bg}>
       <SafeAreaView style={styles.overlay}>
         <ScrollView contentContainerStyle={styles.container}>
+          
           {/* LOGO */}
           <LinearGradient
             colors={["#24F7BC", "#24C4FC"]}
@@ -85,12 +166,14 @@ const RegisterScreen = ({ onNavigateToLogin }) => {
             value={name}
             onChangeText={setName}
           />
+
           <CustomInput
             label="Email"
             placeholder="spotify@gmail.com"
             value={email}
             onChangeText={setEmail}
           />
+
           <CustomInput
             label="Mật khẩu"
             placeholder="************"
@@ -99,7 +182,12 @@ const RegisterScreen = ({ onNavigateToLogin }) => {
             onChangeText={setPassword}
           />
 
-          <GradientButton title="Đăng ký" onPress={() => {}} />
+          {/* BUTTON ĐĂNG KÝ */}
+          <GradientButton
+            title="Đăng ký"
+            onPress={registerUser}
+            loading={loading}
+          />
 
           {/* SEPARATOR */}
           <View style={styles.separatorContainer}>
@@ -117,6 +205,7 @@ const RegisterScreen = ({ onNavigateToLogin }) => {
               <Text style={styles.footerLink}> Đăng nhập</Text>
             </TouchableOpacity>
           </View>
+
         </ScrollView>
       </SafeAreaView>
     </ImageBackground>
@@ -125,8 +214,7 @@ const RegisterScreen = ({ onNavigateToLogin }) => {
 
 export default RegisterScreen;
 
-// ------- STYLES (100% giống LoginScreen) ------
-
+// ------------------- STYLES -------------------
 const styles = StyleSheet.create({
   bg: { flex: 1 },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)" },
@@ -179,11 +267,13 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     marginBottom: 20,
   },
+
   gradientButtonInner: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
+
   buttonText: { color: "#0F1B2E", fontSize: 18, fontWeight: "700" },
 
   separatorContainer: {

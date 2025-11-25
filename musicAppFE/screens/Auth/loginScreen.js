@@ -8,26 +8,39 @@ import {
   SafeAreaView,
   ScrollView,
   ImageBackground,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
+
 import { LinearGradient } from "expo-linear-gradient";
+import { auth } from "../../firebaseConfig";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 const bgImage = require("../../assets/image/bgrLogin.jpg");
 
-// Nút Gradient
-const GradientButton = ({ title, onPress }) => (
+// Gradient Button
+const GradientButton = ({ title, onPress, loading }) => (
   <LinearGradient
     colors={["#24F7BC", "#24C4FC"]}
     start={{ x: 0, y: 0 }}
     end={{ x: 1, y: 1 }}
     style={styles.gradientButton}
   >
-    <TouchableOpacity style={styles.gradientButtonInner} onPress={onPress}>
-      <Text style={styles.buttonText}>{title}</Text>
+    <TouchableOpacity
+      style={styles.gradientButtonInner}
+      onPress={onPress}
+      disabled={loading}
+    >
+      {loading ? (
+        <ActivityIndicator size="small" color="#0F1B2E" />
+      ) : (
+        <Text style={styles.buttonText}>{title}</Text>
+      )}
     </TouchableOpacity>
   </LinearGradient>
 );
 
-// Nút Google
+// Google Button
 const GoogleButton = ({ title, onPress }) => (
   <TouchableOpacity style={styles.googleButton} onPress={onPress}>
     <View style={styles.googleIconContainer}>
@@ -37,7 +50,6 @@ const GoogleButton = ({ title, onPress }) => (
   </TouchableOpacity>
 );
 
-// Input
 const CustomInput = ({
   label,
   placeholder,
@@ -58,16 +70,45 @@ const CustomInput = ({
   </View>
 );
 
-const LoginScreen = ({ onNavigateToRegister }) => {
+const LoginScreen = ({ onNavigateToRegister, onLoginSuccess }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const loginUser = async () => {
+    if (!email || !password) {
+      Alert.alert("Lỗi", "Vui lòng nhập email và mật khẩu");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await signInWithEmailAndPassword(auth, email, password);
+
+      Alert.alert("Thành công", "Đăng nhập thành công!");
+      onLoginSuccess && onLoginSuccess();
+
+    } catch (error) {
+      if (error.code === "auth/user-not-found") {
+        Alert.alert("Lỗi", "Không tìm thấy tài khoản");
+      } else if (error.code === "auth/wrong-password") {
+        Alert.alert("Lỗi", "Sai mật khẩu");
+      } else if (error.code === "auth/invalid-email") {
+        Alert.alert("Lỗi", "Email không hợp lệ");
+      } else {
+        Alert.alert("Lỗi", "Đăng nhập thất bại");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ImageBackground source={bgImage} resizeMode="cover" style={styles.bg}>
       <SafeAreaView style={styles.overlay}>
         <ScrollView contentContainerStyle={styles.container}>
-          {/* LOGO */}
+          
           <LinearGradient
             colors={["#24F7BC", "#24C4FC"]}
             style={styles.logoGradient}
@@ -78,7 +119,6 @@ const LoginScreen = ({ onNavigateToRegister }) => {
           <Text style={styles.logoText}>Vii Music</Text>
           <Text style={styles.headerText}>Đăng nhập vào tài khoản của bạn</Text>
 
-          {/* FORM */}
           <CustomInput
             label="Địa chỉ Email"
             placeholder="spotify@gmail.com"
@@ -94,7 +134,7 @@ const LoginScreen = ({ onNavigateToRegister }) => {
             onChangeText={setPassword}
           />
 
-          {/* OPTIONS */}
+          {/* Remember me */}
           <View style={styles.optionsRow}>
             <TouchableOpacity
               style={styles.checkboxContainer}
@@ -113,26 +153,25 @@ const LoginScreen = ({ onNavigateToRegister }) => {
             </TouchableOpacity>
           </View>
 
-          {/* BUTTON LOGIN */}
-          <GradientButton title="Đăng nhập" onPress={() => {}} />
+          {/* Nút login */}
+          <GradientButton title="Đăng nhập" onPress={loginUser} loading={loading} />
 
-          {/* SEPARATOR */}
           <View style={styles.separatorContainer}>
-            <View style={styles.line} />
-            <Text style={styles.separatorText}>Hoặc tiếp tục với</Text>
-            <View style={styles.line} />
+            <View className="line" />
+            <Text style={styles.separatorText}>Hoặc</Text>
+            <View className="line" />
           </View>
 
-          {/* GOOGLE BTN */}
+          {/* Google Login */}
           <GoogleButton title="Đăng nhập với Google" onPress={() => {}} />
 
-          {/* FOOTER */}
           <View style={styles.footerRow}>
             <Text style={styles.footerText}>Chưa có tài khoản?</Text>
             <TouchableOpacity onPress={onNavigateToRegister}>
               <Text style={styles.footerLink}> Đăng ký</Text>
             </TouchableOpacity>
           </View>
+
         </ScrollView>
       </SafeAreaView>
     </ImageBackground>
@@ -141,16 +180,10 @@ const LoginScreen = ({ onNavigateToRegister }) => {
 
 export default LoginScreen;
 
-// -----------------------------------------------
-// STYLES
-// -----------------------------------------------
+// Styles
 const styles = StyleSheet.create({
   bg: { flex: 1 },
-
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.55)",
-  },
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)" },
 
   container: {
     flexGrow: 1,
@@ -259,25 +292,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  separatorContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
-    marginBottom: 25,
-  },
-
-  line: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.28)",
-  },
-
-  separatorText: {
-    marginHorizontal: 15,
-    color: "rgba(255,255,255,0.65)",
-    fontSize: 14,
-  },
-
   googleButton: {
     flexDirection: "row",
     width: "100%",
@@ -309,13 +323,14 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  footerRow: { flexDirection: "row" },
-
-  footerText: { color: "#fff", fontSize: 16 },
-
-  footerLink: {
-    color: "#24C4FC",
-    fontSize: 16,
-    fontWeight: "bold",
+  separatorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 25,
   },
+
+  footerRow: { flexDirection: "row" },
+  footerText: { color: "#fff", fontSize: 16 },
+  footerLink: { color: "#24C4FC", fontSize: 16, fontWeight: "bold" },
 });

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -7,18 +7,41 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
+
+import { useDispatch, useSelector } from "react-redux";
+import { fetchSongs } from "../../redux/slice/songSlice";
 
 import SearchIcon from "../../assets/icons/search.svg";
 import PlayIcon from "../../assets/icons/play.svg";
 
 const HomeScreen = ({ onNavigateToList }) => {
+  const dispatch = useDispatch();
+  const { list: songs, status } = useSelector((state) => state.songs);
+
+  // LOAD SONGS KHI VÀO TRANG
+  useEffect(() => {
+    dispatch(fetchSongs());
+  }, []);
+
+  // convert durationMs → 2:30
+  const formatTime = (ms) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds < 10 ? "0" + seconds : seconds}`;
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
+        
+        {/* HEADER */}
         <Text style={styles.helloText}>Xin chào Vini,</Text>
         <Text style={styles.subText}>Hôm nay bạn muốn nghe gì?</Text>
 
+        {/* SEARCH */}
         <View style={styles.searchContainer}>
           <SearchIcon width={20} height={20} fill="#777" />
           <TextInput
@@ -28,6 +51,7 @@ const HomeScreen = ({ onNavigateToList }) => {
           />
         </View>
 
+        {/* TAB */}
         <View style={styles.tabRow}>
           <View style={styles.tabItem}>
             <Text style={[styles.tabText, styles.tabActive]}>Gợi ý</Text>
@@ -39,6 +63,7 @@ const HomeScreen = ({ onNavigateToList }) => {
           <Text style={styles.tabText}>Kinh doanh</Text>
         </View>
 
+        {/* STATIC CARDS */}
         <View style={styles.cardRow}>
           <View style={styles.card}>
             <Image
@@ -59,6 +84,7 @@ const HomeScreen = ({ onNavigateToList }) => {
           </View>
         </View>
 
+        {/* RECENT */}
         <View style={styles.recentHeaderRow}>
           <Text style={styles.recentHeader}>Phát gần đây</Text>
           <TouchableOpacity onPress={onNavigateToList}>
@@ -66,23 +92,38 @@ const HomeScreen = ({ onNavigateToList }) => {
           </TouchableOpacity>
         </View>
 
-        {[1, 2, 3].map((i) => (
-          <View key={i} style={styles.recentItem}>
+        {/* LOADING */}
+        {status === "loading" && (
+          <ActivityIndicator
+            size="large"
+            color="#24F7BC"
+            style={{ marginTop: 20 }}
+          />
+        )}
+
+        {/* SONG LIST */}
+        {songs.map((song) => (
+          <View key={song.id} style={styles.recentItem}>
+            {/* IMAGE */}
             <Image
-              source={require("../../assets/image/bgrLogin.jpg")}
+              source={{ uri: song.imageUrl }}
               style={styles.recentImage}
             />
 
+            {/* INFO */}
             <View style={{ flex: 1 }}>
-              <Text style={styles.recentTitle}>Mehabooba</Text>
+              <Text style={styles.recentTitle}>{song.title}</Text>
+
               <Text style={styles.recentArtist}>
-                Kgf Chapter 2 • Ananya Bhat
+                {song.genreName || "Không rõ thể loại"}
               </Text>
+
               <Text style={styles.recentTime}>
-                2:50 / <Text style={{ color: "#24F7BC" }}>3:50</Text>
+                {formatTime(song.durationMs)}
               </Text>
             </View>
 
+            {/* PLAY BUTTON */}
             <View style={styles.playButton}>
               <PlayIcon width={14} height={14} fill="#fff" />
             </View>
@@ -95,7 +136,6 @@ const HomeScreen = ({ onNavigateToList }) => {
 
 export default HomeScreen;
 
-// ----- Styles y chang bản trước -----
 const styles = StyleSheet.create({
   container: {
     flex: 1,

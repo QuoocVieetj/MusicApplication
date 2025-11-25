@@ -1,6 +1,11 @@
 import React, { useState } from "react";
 import { View, StyleSheet } from "react-native";
 
+// 🟢 Redux Provider + Store
+import { Provider } from "react-redux";
+import store from "./redux/store";
+
+// 🟢 Screens
 import LoginScreen from "./screens/Auth/loginScreen";
 import RegisterScreen from "./screens/Auth/registerScreen";
 import HomeScreen from "./screens/Home/homeScreen";
@@ -9,69 +14,68 @@ import DetailSong from "./screens/SongPlay/detailSong";
 import FooterComponent from "./components/footerComponent";
 
 const App = () => {
-  // const [currentScreen, setCurrentScreen] = useState("Login");
-  const [currentScreen, setCurrentScreen] = useState("DetailSong");
+  // Mặc định mở Login
+  const [currentScreen, setCurrentScreen] = useState("Login");
 
+  // Điều hướng đơn giản
   const navigateToRegister = () => setCurrentScreen("Register");
   const navigateToLogin = () => setCurrentScreen("Login");
   const navigateToHome = () => setCurrentScreen("Home");
   const navigateToList = () => setCurrentScreen("List");
-  const navigateToDetail = () => setCurrentScreen("DetailSong");  // ⬅ THÊM
+  const navigateToDetail = () => setCurrentScreen("DetailSong");
 
   return (
-    <View style={styles.container}>
-      
-      {/* LOGIN */}
-      {/* 
-      {currentScreen === "Login" && (
-        <LoginScreen
-          onNavigateToRegister={navigateToRegister}
-          onLoginSuccess={navigateToHome}
-        />
-      )} 
-      */}
+    <Provider store={store}>
+      <View style={styles.container}>
 
-      {/* REGISTER */}
-      {/* 
-      {currentScreen === "Register" && (
-        <RegisterScreen
-          onNavigateToLogin={navigateToLogin}
-          onRegisterSuccess={navigateToHome}
-        />
-      )} 
-      */}
-
-      {/* HOME SCREEN */}
-      {currentScreen === "Home" && (
-        <View style={{ flex: 1 }}>
-          <HomeScreen 
-            onNavigateToList={navigateToList}
-            onSongPress={navigateToDetail}        // ⬅ BẤM BÀI HÁT → DETAIL
+        {/* LOGIN */}
+        {currentScreen === "Login" && (
+          <LoginScreen
+            onNavigateToRegister={navigateToRegister}
+            onLoginSuccess={navigateToHome}   // về trang Home sau login
           />
-          <FooterComponent />
-        </View>
-      )}
+        )}
 
-      {/* LIST SCREEN */}
-      {currentScreen === "List" && (
-        <View style={{ flex: 1 }}>
-          <ListScreen 
-            onBack={navigateToHome}
-            onSongPress={navigateToDetail}        // ⬅ BẤM BÀI HÁT → DETAIL
+        {/* REGISTER */}
+        {currentScreen === "Register" && (
+          <RegisterScreen
+            onNavigateToLogin={navigateToLogin}
+            onRegisterSuccess={navigateToHome}  // về Home sau khi tạo tk
           />
-          <FooterComponent />
-        </View>
-      )}
+        )}
 
-      {/* DETAIL SONG SCREEN */}
-      {currentScreen === "DetailSong" && (
-        <View style={{ flex: 1 }}>
-          <DetailSong onBack={navigateToList} />  // ⬅ QUAY LẠI LIST
-          {/* KHÔNG có footer ở đây */}
-        </View>
-      )}
+        {/* HOME */}
+        {currentScreen === "Home" && (
+          <View style={{ flex: 1 }}>
+            <HomeScreen
+              onNavigateToList={navigateToList}
+              onSongPress={navigateToDetail}  // Nhấn bài hát → Detail
+            />
+            <FooterComponent />
+          </View>
+        )}
 
-    </View>
+        {/* LIST */}
+        {currentScreen === "List" && (
+          <View style={{ flex: 1 }}>
+            <ListScreen
+              onBack={navigateToHome}
+              onSongPress={navigateToDetail}   // Nhấn bài hát → Detail
+            />
+            <FooterComponent />
+          </View>
+        )}
+
+        {/* DETAIL SONG */}
+        {currentScreen === "DetailSong" && (
+          <View style={{ flex: 1 }}>
+            <DetailSong onBack={navigateToList} />  // quay lại màn List
+            {/* Không có Footer ở đây */}
+          </View>
+        )}
+
+      </View>
+    </Provider>
   );
 };
 
