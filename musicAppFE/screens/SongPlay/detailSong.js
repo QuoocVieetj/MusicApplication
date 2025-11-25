@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from "react-native";
+import { Audio } from "expo-av";
 
 import PlayIcon from "../../assets/icons/play.svg";
 import HeartIcon from "../../assets/icons/heart.svg";
@@ -16,9 +17,21 @@ import PrevIcon from "../../assets/icons/prev.svg";
 
 const { width, height } = Dimensions.get("window");
 
+// Pause Icon Component
+const PauseIcon = ({ width, height, fill }) => (
+  <View style={{ width, height, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6 }}>
+    <View style={{ width: 4, height: height * 0.6, backgroundColor: fill, borderRadius: 2 }} />
+    <View style={{ width: 4, height: height * 0.6, backgroundColor: fill, borderRadius: 2 }} />
+  </View>
+);
+
 const DetailSong = ({ onBack, song }) => {
   const scrollRef = useRef(null);
   const [page, setPage] = useState(0);
+  const [sound, setSound] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
 
   // Format time từ milliseconds
   const formatTime = (ms) => {
@@ -31,6 +44,81 @@ const DetailSong = ({ onBack, song }) => {
 
   // Lyrics tạm thời (có thể lấy từ API sau)
   const lyrics = song?.lyrics || "Chưa có lời bài hát";
+
+  // Load và setup audio
+  useEffect(() => {
+    if (!song?.audioUrl) return;
+
+    const loadAudio = async () => {
+      try {
+        // Unload sound cũ nếu có
+        if (sound) {
+          await sound.unloadAsync();
+        }
+
+        // Cấu hình audio mode
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+        });
+
+        // Load audio mới
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri: song.audioUrl },
+          { shouldPlay: false }
+        );
+
+        // Lấy duration
+        const status = await newSound.getStatusAsync();
+        if (status.isLoaded) {
+          setDuration(status.durationMillis || 0);
+        }
+
+        // Listen to playback status
+        newSound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded) {
+            setCurrentTime(status.positionMillis || 0);
+            setIsPlaying(status.isPlaying);
+            setDuration(status.durationMillis || status.durationMillis || 0);
+            
+            // Tự động dừng khi hết bài
+            if (status.didJustFinish) {
+              setIsPlaying(false);
+              setCurrentTime(0);
+            }
+          }
+        });
+
+        setSound(newSound);
+      } catch (error) {
+        console.error("Error loading audio:", error);
+      }
+    };
+
+    loadAudio();
+
+    // Cleanup khi unmount hoặc song thay đổi
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
+  }, [song?.audioUrl]);
+
+  // Play/Pause handler
+  const handlePlayPause = async () => {
+    if (!sound) return;
+
+    try {
+      if (isPlaying) {
+        await sound.pauseAsync();
+      } else {
+        await sound.playAsync();
+      }
+    } catch (error) {
+      console.error("Error playing/pausing:", error);
+    }
+  };
 
   // Fallback nếu không có song data
   if (!song) {
@@ -124,13 +212,20 @@ const DetailSong = ({ onBack, song }) => {
       {/* SLIDER */}
       <View style={styles.sliderContainer}>
         <View style={styles.sliderTrack} />
-        <View style={styles.sliderProgress} />
+        <View
+          style={[
+            styles.sliderProgress,
+            {
+              width: duration > 0 ? `${(currentTime / duration) * 100}%` : "0%",
+            },
+          ]}
+        />
       </View>
 
       <View style={styles.timeRow}>
-        <Text style={styles.timeText}>0:00</Text>
+        <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
         <Text style={styles.timeText}>
-          {song.durationMs ? formatTime(song.durationMs) : "0:00"}
+          {formatTime(duration || song.durationMs)}
         </Text>
       </View>
 
@@ -140,8 +235,12 @@ const DetailSong = ({ onBack, song }) => {
           <PrevIcon width={30} height={30} fill="#fff" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.playButton}>
-          <PlayIcon width={38} height={38} fill="#0F1218" />
+        <TouchableOpacity style={styles.playButton} onPress={handlePlayPause}>
+          {isPlaying ? (
+            <PauseIcon width={38} height={38} fill="#0F1218" />
+          ) : (
+            <PlayIcon width={38} height={38} fill="#0F1218" />
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.sideButton}>
@@ -268,14 +367,22 @@ const styles = StyleSheet.create({
     marginTop: 20,
     width: "90%",
     alignSelf: "center",
+    position: "relative",
+    height: 5,
   },
   sliderTrack: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
     height: 5,
     backgroundColor: "#333",
     borderRadius: 10,
   },
   sliderProgress: {
-    width: "35%",
+    position: "absolute",
+    top: 0,
+    left: 0,
     height: 5,
     backgroundColor: "#24F7BC",
     borderRadius: 10,
@@ -313,6 +420,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#24F7BC",
     padding: 28,
     borderRadius: 60,
+    justifyContent: "center",
+    alignItems: "center",
 
     shadowColor: "#24F7BC",
     shadowOpacity: 0.45,
