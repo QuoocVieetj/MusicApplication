@@ -14,10 +14,10 @@ import DetailSong from "./screens/SongPlay/detailSong";
 import FooterComponent from "./components/footerComponent";
 
 const App = () => {
-  // 👇 App mở lên mặc định vào Login
+  // Mặc định mở Login
   const [currentScreen, setCurrentScreen] = useState("Login");
 
-  // 👇 Chuyển màn
+  // Điều hướng đơn giản
   const navigateToRegister = () => setCurrentScreen("Register");
   const navigateToLogin = () => setCurrentScreen("Login");
   const navigateToHome = () => setCurrentScreen("Home");
@@ -32,7 +32,7 @@ const App = () => {
         {currentScreen === "Login" && (
           <LoginScreen
             onNavigateToRegister={navigateToRegister}
-            onLoginSuccess={navigateToHome}   // <- chạy khi đăng nhập thành công
+            onLoginSuccess={navigateToHome}   // về trang Home sau login
           />
         )}
 
@@ -40,14 +40,17 @@ const App = () => {
         {currentScreen === "Register" && (
           <RegisterScreen
             onNavigateToLogin={navigateToLogin}
-            onRegisterSuccess={navigateToHome}  // <- chạy khi đăng ký xong
+            onRegisterSuccess={navigateToHome}  // về Home sau khi tạo tk
           />
         )}
 
         {/* HOME */}
         {currentScreen === "Home" && (
           <View style={{ flex: 1 }}>
-            <HomeScreen onNavigateToList={navigateToList} />
+            <HomeScreen
+              onNavigateToList={navigateToList}
+              onSongPress={navigateToDetail}  // Nhấn bài hát → Detail
+            />
             <FooterComponent />
           </View>
         )}
@@ -57,7 +60,7 @@ const App = () => {
           <View style={{ flex: 1 }}>
             <ListScreen
               onBack={navigateToHome}
-              onSongPress={navigateToDetail}
+              onSongPress={navigateToDetail}   // Nhấn bài hát → Detail
             />
             <FooterComponent />
           </View>
@@ -66,7 +69,8 @@ const App = () => {
         {/* DETAIL SONG */}
         {currentScreen === "DetailSong" && (
           <View style={{ flex: 1 }}>
-            <DetailSong onBack={navigateToList} />
+            <DetailSong onBack={navigateToList} />  // quay lại màn List
+            {/* Không có Footer ở đây */}
           </View>
         )}
 

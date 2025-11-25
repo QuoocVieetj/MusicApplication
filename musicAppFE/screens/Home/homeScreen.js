@@ -20,7 +20,7 @@ const HomeScreen = ({ onNavigateToList }) => {
   const dispatch = useDispatch();
   const { list: songs, status } = useSelector((state) => state.songs);
 
-  // LOAD SONGS WHEN SCREEN OPENS
+  // LOAD SONGS KHI VÀO TRANG
   useEffect(() => {
     dispatch(fetchSongs());
   }, []);
@@ -41,7 +41,7 @@ const HomeScreen = ({ onNavigateToList }) => {
         <Text style={styles.helloText}>Xin chào Vini,</Text>
         <Text style={styles.subText}>Hôm nay bạn muốn nghe gì?</Text>
 
-        {/* SEARCH BAR */}
+        {/* SEARCH */}
         <View style={styles.searchContainer}>
           <SearchIcon width={20} height={20} fill="#777" />
           <TextInput
@@ -51,7 +51,7 @@ const HomeScreen = ({ onNavigateToList }) => {
           />
         </View>
 
-        {/* TABS */}
+        {/* TAB */}
         <View style={styles.tabRow}>
           <View style={styles.tabItem}>
             <Text style={[styles.tabText, styles.tabActive]}>Gợi ý</Text>
@@ -92,26 +92,28 @@ const HomeScreen = ({ onNavigateToList }) => {
           </TouchableOpacity>
         </View>
 
-        {/* LOADING INDICATOR */}
+        {/* LOADING */}
         {status === "loading" && (
-          <ActivityIndicator size="large" color="#24F7BC" style={{ marginTop: 20 }} />
+          <ActivityIndicator
+            size="large"
+            color="#24F7BC"
+            style={{ marginTop: 20 }}
+          />
         )}
 
         {/* SONG LIST */}
         {songs.map((song) => (
           <View key={song.id} style={styles.recentItem}>
-            
             {/* IMAGE */}
             <Image
               source={{ uri: song.imageUrl }}
               style={styles.recentImage}
             />
 
-            {/* TEXT INFO */}
+            {/* INFO */}
             <View style={{ flex: 1 }}>
               <Text style={styles.recentTitle}>{song.title}</Text>
 
-              {/* genreName hoặc artistName */}
               <Text style={styles.recentArtist}>
                 {song.genreName || "Không rõ thể loại"}
               </Text>
@@ -127,7 +129,6 @@ const HomeScreen = ({ onNavigateToList }) => {
             </View>
           </View>
         ))}
-
       </ScrollView>
     </View>
   );

@@ -11,6 +11,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+
 import { LinearGradient } from "expo-linear-gradient";
 
 import { auth } from "../../firebaseConfig";
@@ -21,7 +22,7 @@ import {
 
 const bgImage = require("../../assets/image/bgrLogin.jpg");
 
-// Nút Gradient
+// Gradient Button
 const GradientButton = ({ title, onPress, loading }) => (
   <LinearGradient
     colors={["#24F7BC", "#24C4FC"]}
@@ -43,7 +44,17 @@ const GradientButton = ({ title, onPress, loading }) => (
   </LinearGradient>
 );
 
-// Input
+// Google Button
+const GoogleButton = ({ title, onPress }) => (
+  <TouchableOpacity style={styles.googleButton} onPress={onPress}>
+    <View style={styles.googleIconContainer}>
+      <Text style={styles.googleIconText}>G</Text>
+    </View>
+    <Text style={styles.googleButtonText}>{title}</Text>
+  </TouchableOpacity>
+);
+
+// Input Component
 const CustomInput = ({
   label,
   placeholder,
@@ -68,6 +79,7 @@ const RegisterScreen = ({ onNavigateToLogin, onRegisterSuccess }) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
 
   const registerUser = async () => {
@@ -95,10 +107,10 @@ const RegisterScreen = ({ onNavigateToLogin, onRegisterSuccess }) => {
       // 2) Update tên hiển thị
       await updateProfile(user, { displayName: name });
 
-      // 3) Lấy Firebase Token
+      // 3) Lấy ID Token
       const idToken = await user.getIdToken(true);
 
-      // 4) Gửi user sang backend để lưu Firestore
+      // 4) Gửi qua backend để lưu Firestore
       const response = await fetch("http://192.168.1.71:8386/api/users", {
         method: "POST",
         headers: {
@@ -120,7 +132,6 @@ const RegisterScreen = ({ onNavigateToLogin, onRegisterSuccess }) => {
         throw new Error("Không thể lưu user vào server");
       }
 
-      // 5) THÀNH CÔNG → quay về Home
       Alert.alert("Thành công", "Tạo tài khoản thành công!");
       onRegisterSuccess && onRegisterSuccess();
 
@@ -178,11 +189,18 @@ const RegisterScreen = ({ onNavigateToLogin, onRegisterSuccess }) => {
             loading={loading}
           />
 
+          {/* SEPARATOR */}
+          <View style={styles.separatorContainer}>
+            <View style={styles.line} />
+            <Text style={styles.separatorText}>Hoặc tiếp tục với</Text>
+            <View style={styles.line} />
+          </View>
+
+          <GoogleButton title="Đăng ký với Google" onPress={() => {}} />
+
           {/* FOOTER */}
           <View style={styles.footerRow}>
             <Text style={styles.footerText}>Đã có tài khoản?</Text>
-
-            {/* NÚT ĐĂNG NHẬP → QUAY LẠI LOGIN */}
             <TouchableOpacity onPress={onNavigateToLogin}>
               <Text style={styles.footerLink}> Đăng nhập</Text>
             </TouchableOpacity>
@@ -196,7 +214,7 @@ const RegisterScreen = ({ onNavigateToLogin, onRegisterSuccess }) => {
 
 export default RegisterScreen;
 
-// =================== STYLES ===================
+// ------------------- STYLES -------------------
 const styles = StyleSheet.create({
   bg: { flex: 1 },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)" },
@@ -225,9 +243,9 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: 22,
+    fontWeight: "bold",
     color: "#fff",
     marginBottom: 20,
-    fontWeight: "bold",
   },
 
   inputContainer: { width: "100%", marginBottom: 20 },
@@ -247,8 +265,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 55,
     borderRadius: 15,
-    marginTop: 10,
-    marginBottom: 25,
+    marginBottom: 20,
   },
 
   gradientButtonInner: {
@@ -256,7 +273,42 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
   buttonText: { color: "#0F1B2E", fontSize: 18, fontWeight: "700" },
+
+  separatorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 20,
+  },
+  line: { flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.28)" },
+  separatorText: {
+    marginHorizontal: 15,
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 14,
+  },
+
+  googleButton: {
+    flexDirection: "row",
+    width: "100%",
+    height: 55,
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 25,
+  },
+
+  googleIconContainer: {
+    width: 26,
+    height: 26,
+    marginRight: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  googleIconText: { fontSize: 18, fontWeight: "bold", color: "#4285F4" },
+  googleButtonText: { color: "#1E1E3F", fontSize: 16, fontWeight: "600" },
 
   footerRow: { flexDirection: "row" },
   footerText: { color: "#fff", fontSize: 16 },
