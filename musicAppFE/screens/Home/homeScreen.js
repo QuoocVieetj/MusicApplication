@@ -12,17 +12,20 @@ import {
 
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSongs } from "../../redux/slice/songSlice";
+import { fetchAlbums } from "../../redux/slice/albumSlice";
 
 import SearchIcon from "../../assets/icons/search.svg";
 import PlayIcon from "../../assets/icons/play.svg";
 
-const HomeScreen = ({ onNavigateToList }) => {
+const HomeScreen = ({ onNavigateToList, onSongPress }) => {
   const dispatch = useDispatch();
-  const { list: songs, status } = useSelector((state) => state.songs);
+  const { list: songs, status, error } = useSelector((state) => state.songs);
+  const { list: albums, status: albumsStatus, error: albumsError } = useSelector((state) => state.albums);
 
-  // LOAD SONGS KHI VÀO TRANG
+  // LOAD SONGS VÀ ALBUMS KHI VÀO TRANG
   useEffect(() => {
     dispatch(fetchSongs());
+    dispatch(fetchAlbums());
   }, []);
 
   // convert durationMs → 2:30
@@ -63,26 +66,37 @@ const HomeScreen = ({ onNavigateToList }) => {
           <Text style={styles.tabText}>Kinh doanh</Text>
         </View>
 
-        {/* STATIC CARDS */}
-        <View style={styles.cardRow}>
-          <View style={styles.card}>
-            <Image
-              source={require("../../assets/image/bgrLogin.jpg")}
-              style={styles.cardImage}
-            />
-            <Text style={styles.cardTitle}>Tiệc thứ sáu</Text>
-            <Text style={styles.cardSubtitle}>Tâm trạng bùng nổ!</Text>
+        {/* ALBUMS CARDS */}
+        {albumsStatus === "loading" && (
+          <ActivityIndicator
+            size="small"
+            color="#24F7BC"
+            style={{ marginBottom: 25 }}
+          />
+        )}
+        
+        {albumsStatus === "success" && albums.length > 0 && (
+          <View style={styles.cardRow}>
+            {albums.slice(0, 2).map((album) => (
+              <View key={album.id} style={styles.card}>
+                <Image
+                  source={album.coverUrl ? { uri: album.coverUrl } : require("../../assets/image/bgrLogin.jpg")}
+                  style={styles.cardImage}
+                />
+                <Text style={styles.cardTitle} numberOfLines={1}>
+                  {album.title || "Không có tiêu đề"}
+                </Text>
+                <Text style={styles.cardSubtitle} numberOfLines={1}>
+                  {album.genres && album.genres.length > 0 ? album.genres[0] : "Không rõ thể loại"}
+                </Text>
+              </View>
+            ))}
           </View>
+        )}
 
-          <View style={styles.card}>
-            <Image
-              source={require("../../assets/image/bgrLogin.jpg")}
-              style={styles.cardImage}
-            />
-            <Text style={styles.cardTitle}>Tiệc thứ bảy</Text>
-            <Text style={styles.cardSubtitle}>Tâm trạng tiệc tùng!</Text>
-          </View>
-        </View>
+        {albumsStatus === "failed" && (
+          <Text style={styles.errorText}>Không thể tải albums</Text>
+        )}
 
         {/* RECENT */}
         <View style={styles.recentHeaderRow}>
@@ -101,33 +115,69 @@ const HomeScreen = ({ onNavigateToList }) => {
           />
         )}
 
-        {/* SONG LIST */}
-        {songs.map((song) => (
-          <View key={song.id} style={styles.recentItem}>
-            {/* IMAGE */}
-            <Image
-              source={{ uri: song.imageUrl }}
-              style={styles.recentImage}
-            />
-
-            {/* INFO */}
-            <View style={{ flex: 1 }}>
-              <Text style={styles.recentTitle}>{song.title}</Text>
-
-              <Text style={styles.recentArtist}>
-                {song.genreName || "Không rõ thể loại"}
-              </Text>
-
-              <Text style={styles.recentTime}>
-                {formatTime(song.durationMs)}
-              </Text>
-            </View>
-
-            {/* PLAY BUTTON */}
-            <View style={styles.playButton}>
-              <PlayIcon width={14} height={14} fill="#fff" />
-            </View>
+        {/* ERROR MESSAGE */}
+        {status === "failed" && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>
+              ❌ Không thể tải dữ liệu
+            </Text>
+            <Text style={styles.errorDetail}>{error}</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => dispatch(fetchSongs())}
+            >
+              <Text style={styles.retryText}>Thử lại</Text>
+            </TouchableOpacity>
           </View>
+        )}
+
+        {/* EMPTY STATE */}
+        {status === "success" && songs.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Chưa có bài hát nào</Text>
+          </View>
+        )}
+
+        {/* SONG LIST */}
+        {status === "success" && songs.length > 0 && songs.map((song) => (
+          <TouchableOpacity
+            key={song.id}
+            onPress={() => onSongPress && onSongPress(song)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.recentItem}>
+              {/* IMAGE */}
+              <Image
+                source={song.imageUrl ? { uri: song.imageUrl } : require("../../assets/image/bgrLogin.jpg")}
+                style={styles.recentImage}
+              />
+
+              {/* INFO */}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.recentTitle}>{song.title || "Không có tiêu đề"}</Text>
+
+                <Text style={styles.recentArtist}>
+                  {song.genreName || song.artistName || "Không rõ thể loại"}
+                </Text>
+
+                <Text style={styles.recentTime}>
+                  {song.durationMs ? formatTime(song.durationMs) : "0:00"}
+                </Text>
+              </View>
+
+              {/* PLAY BUTTON */}
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onSongPress && onSongPress(song);
+                }}
+              >
+                <View style={styles.playButton}>
+                  <PlayIcon width={32} height={32} fill="#fff" />
+                </View>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </View>
@@ -196,11 +246,49 @@ const styles = StyleSheet.create({
   recentArtist: { color: "#aaa", fontSize: 12, marginTop: 3 },
   recentTime: { color: "#ccc", fontSize: 12, marginTop: 2 },
   playButton: {
-    width: 34,
-    height: 34,
+    width: 48,
+    height: 48,
     backgroundColor: "#24F7BC",
-    borderRadius: 20,
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
+  },
+  errorContainer: {
+    marginTop: 20,
+    padding: 20,
+    backgroundColor: "#1C1F26",
+    borderRadius: 15,
+    alignItems: "center",
+  },
+  errorText: {
+    color: "#ff4444",
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  errorDetail: {
+    color: "#aaa",
+    fontSize: 12,
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  retryButton: {
+    backgroundColor: "#24F7BC",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: "#000",
+    fontWeight: "600",
+  },
+  emptyContainer: {
+    marginTop: 20,
+    padding: 20,
+    alignItems: "center",
+  },
+  emptyText: {
+    color: "#777",
+    fontSize: 14,
   },
 });

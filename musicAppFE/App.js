@@ -16,13 +16,23 @@ import FooterComponent from "./components/footerComponent";
 const App = () => {
   // Mặc định mở Login
   const [currentScreen, setCurrentScreen] = useState("Login");
+  const [selectedSong, setSelectedSong] = useState(null);
+  const [previousScreen, setPreviousScreen] = useState("Home");
 
   // Điều hướng đơn giản
   const navigateToRegister = () => setCurrentScreen("Register");
   const navigateToLogin = () => setCurrentScreen("Login");
   const navigateToHome = () => setCurrentScreen("Home");
   const navigateToList = () => setCurrentScreen("List");
-  const navigateToDetail = () => setCurrentScreen("DetailSong");
+  const navigateToDetail = (song) => {
+    setSelectedSong(song);
+    setPreviousScreen(currentScreen); // Lưu màn hình hiện tại
+    setCurrentScreen("DetailSong");
+  };
+  
+  const navigateBackFromDetail = () => {
+    setCurrentScreen(previousScreen); // Quay lại màn hình trước đó
+  };
 
   return (
     <Provider store={store}>
@@ -69,7 +79,10 @@ const App = () => {
         {/* DETAIL SONG */}
         {currentScreen === "DetailSong" && (
           <View style={{ flex: 1 }}>
-            <DetailSong onBack={navigateToList} />  // quay lại màn List
+            <DetailSong 
+              onBack={navigateBackFromDetail}
+              song={selectedSong}
+            />
             {/* Không có Footer ở đây */}
           </View>
         )}

@@ -1,16 +1,9 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const admin = require("firebase-admin");
 
-// Firebase Key
-const serviceAccount = require("./firebase-key.json");
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-
-global.db = admin.firestore();
+// Import Firebase config (đã được init trong config/firebase.js)
+require("./config/firebase");
 
 const app = express();
 app.use(cors());
@@ -26,5 +19,23 @@ app.use("/api/users", require("./routes/users"));
 
 const PORT = 8386;
 
-app.listen(PORT, () => console.log(`🚀 Server at http://192.168.1.71:${PORT}`));
+// Lấy IP address động
+const os = require('os');
+const networkInterfaces = os.networkInterfaces();
+let ipAddress = '192.168.1.71'; // default
+
+for (const interfaceName in networkInterfaces) {
+  for (const iface of networkInterfaces[interfaceName]) {
+    if (iface.family === 'IPv4' && !iface.internal) {
+      ipAddress = iface.address;
+      break;
+    }
+  }
+}
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running at:`);
+  console.log(`   - http://localhost:${PORT}`);
+  console.log(`   - http://${ipAddress}:${PORT}`);
+});
 

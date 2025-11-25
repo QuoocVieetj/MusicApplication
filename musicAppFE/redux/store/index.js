@@ -1,9 +1,11 @@
 import { configureStore } from "@reduxjs/toolkit";
-import { songReducer } from "../slice/songSlice";   // 👈 Sửa ở đây
+import { songReducer } from "../slice/songSlice";
+import { albumReducer } from "../slice/albumSlice";
 
 export const store = configureStore({
   reducer: {
-    songs: songReducer,  // 👈 OK
+    songs: songReducer,
+    albums: albumReducer,
   },
 });
 

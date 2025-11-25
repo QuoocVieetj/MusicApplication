@@ -6,14 +6,14 @@ const initialState = {
     error: null,
 };
 
-// GET LIST SONGS
-export const fetchSongs = createAsyncThunk(
-    "songs/fetch",
+// GET LIST ALBUMS
+export const fetchAlbums = createAsyncThunk(
+    "albums/fetch",
     async () => {
         try {
-            const res = await fetch("http://192.168.100.221:8386/api/songs");
+            const res = await fetch("http://192.168.100.221:8386/api/albums");
             if (!res.ok) {
-                throw new Error(`Fetch songs failed: ${res.status}`);
+                throw new Error(`Fetch albums failed: ${res.status}`);
             }
             const data = await res.json();
             return data;
@@ -23,24 +23,25 @@ export const fetchSongs = createAsyncThunk(
     }
 );
 
-export const songSlice = createSlice({
-    name: "songs",
+export const albumSlice = createSlice({
+    name: "albums",
     initialState,
     reducers: {},
     extraReducers: (builder) => {
         builder
-            .addCase(fetchSongs.pending, (state) => {
+            .addCase(fetchAlbums.pending, (state) => {
                 state.status = "loading";
             })
-            .addCase(fetchSongs.fulfilled, (state, action) => {
+            .addCase(fetchAlbums.fulfilled, (state, action) => {
                 state.status = "success";
                 state.list = action.payload;
             })
-            .addCase(fetchSongs.rejected, (state, action) => {
+            .addCase(fetchAlbums.rejected, (state, action) => {
                 state.status = "failed";
                 state.error = action.error.message;
             });
     }
 });
 
-export const songReducer = songSlice.reducer;
+export const albumReducer = albumSlice.reducer;
+

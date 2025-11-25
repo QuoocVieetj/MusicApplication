@@ -16,30 +16,39 @@ import PrevIcon from "../../assets/icons/prev.svg";
 
 const { width, height } = Dimensions.get("window");
 
-const DetailSong = ({ onBack }) => {
+const DetailSong = ({ onBack, song }) => {
   const scrollRef = useRef(null);
   const [page, setPage] = useState(0);
 
-  const lyrics = [
-    "Adiyae neethaaaanadi",
-    "Enn bothai thaenae",
-    "Mutham konju",
-    "",
-    "Sagiyae neeyaaradi",
-    "Kai theendum pounarmi",
-    "Konjam nillu",
-    "",
-    "Pennae pennae",
-    "Undhan kayyil naanum",
-    "Koodum neram",
-    "Enna vittu chellaadhae",
-    "Kannae kannaeee",
-    "",
-    "Neelum kaalam vendum",
-    "Vaarayo arugilae",
-    "Poovaae kaadhal pookkum poovaae",
-    "Saaral veesa eeraam...",
-  ].join("\n");
+  // Format time từ milliseconds
+  const formatTime = (ms) => {
+    if (!ms) return "0:00";
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds < 10 ? "0" + seconds : seconds}`;
+  };
+
+  // Lyrics tạm thời (có thể lấy từ API sau)
+  const lyrics = song?.lyrics || "Chưa có lời bài hát";
+
+  // Fallback nếu không có song data
+  if (!song) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack}>
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Playing Now</Text>
+          <HeartIcon width={26} height={26} fill="#24F7BC" />
+        </View>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <Text style={{ color: "#fff" }}>Không có thông tin bài hát</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -73,7 +82,11 @@ const DetailSong = ({ onBack }) => {
         <View style={styles.page}>
           <View style={styles.imageWrapper}>
             <Image
-              source={require("../../assets/image/bgrLogin.jpg")}
+              source={
+                song.imageUrl
+                  ? { uri: song.imageUrl }
+                  : require("../../assets/image/bgrLogin.jpg")
+              }
               style={styles.songImage}
             />
           </View>
@@ -99,9 +112,11 @@ const DetailSong = ({ onBack }) => {
       {/* SONG INFO */}
       <View style={styles.songInfo}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.songTitle}>Adiyee</Text>
-          <Text style={styles.songArtist}>
-            Bachelor • Dhibu Ninan Thomas , Kapil Kapilan
+          <Text style={styles.songTitle} numberOfLines={1}>
+            {song.title || "Không có tiêu đề"}
+          </Text>
+          <Text style={styles.songArtist} numberOfLines={1}>
+            {song.genreName || song.artistName || "Không rõ nghệ sĩ"}
           </Text>
         </View>
       </View>
@@ -113,8 +128,10 @@ const DetailSong = ({ onBack }) => {
       </View>
 
       <View style={styles.timeRow}>
-        <Text style={styles.timeText}>1:30</Text>
-        <Text style={styles.timeText}>2:30</Text>
+        <Text style={styles.timeText}>0:00</Text>
+        <Text style={styles.timeText}>
+          {song.durationMs ? formatTime(song.durationMs) : "0:00"}
+        </Text>
       </View>
 
       {/* CONTROLS */}

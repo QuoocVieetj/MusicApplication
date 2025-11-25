@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -6,21 +6,33 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
+
+import { useDispatch, useSelector } from "react-redux";
+import { fetchSongs } from "../../redux/slice/songSlice";
 
 import PlayIcon from "../../assets/icons/play.svg";
 import ListIcon from "../../assets/icons/list.svg";
 
-const ListScreen = ({ onBack }) => {
-  const songs = [
-    { name: "Dailamo Dailamo", artist: "Sangeetha Rajeshwaran, Vijay Annoty" },
-    { name: "Saara Kaattre", artist: "S.P. Balasubrahmanyam" },
-    { name: "Marundhaani", artist: "Nakash Aziz , Anthony Daasan" },
-    { name: "Oru Devadhai", artist: "Roopkumar Rathod", active: true },
-    { name: "Marundhaani", artist: "Nakash Aziz , Anthony Daasan" },
-    { name: "Marundhaani", artist: "Nakash Aziz , Anthony Daasan" },
-    { name: "Marundhaani", artist: "Nakash Aziz , Anthony Daasan" },
-  ];
+const ListScreen = ({ onBack, onSongPress }) => {
+  const dispatch = useDispatch();
+  const { list: songs, status, error } = useSelector((state) => state.songs);
+
+  // LOAD SONGS KHI VÀO TRANG (nếu chưa có)
+  useEffect(() => {
+    if (songs.length === 0 || status === "idle") {
+      dispatch(fetchSongs());
+    }
+  }, []);
+
+  // convert durationMs → 2:30
+  const formatTime = (ms) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds < 10 ? "0" + seconds : seconds}`;
+  };
 
   return (
     <View style={styles.container}>
@@ -41,54 +53,108 @@ const ListScreen = ({ onBack }) => {
           </TouchableOpacity>
         </View>
 
+        {/* Loading */}
+        {status === "loading" && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#24F7BC" />
+          </View>
+        )}
+
+        {/* Error Message */}
+        {status === "failed" && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>❌ Không thể tải dữ liệu</Text>
+            <Text style={styles.errorDetail}>{error}</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => dispatch(fetchSongs())}
+            >
+              <Text style={styles.retryText}>Thử lại</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Empty State */}
+        {status === "success" && songs.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Chưa có bài hát nào</Text>
+          </View>
+        )}
+
         {/* Song List */}
-        <View style={{ marginTop: 25 }}>
-          {songs.map((item, index) => {
-            const isActive = item.active;
+        {status === "success" && songs.length > 0 && (
+          <View style={{ marginTop: 25 }}>
+            {songs.map((song, index) => {
+              // Có thể thêm logic để xác định bài hát đang phát
+              const isActive = false; // Tạm thời để false, có thể update sau
 
-            return (
-              <View
-                key={index}
-                style={[
-                  styles.songItem,
-                  isActive && styles.activeSongItem,
-                ]}
-              >
-                {/* IMAGE */}
-                <Image
-                  source={require("../../assets/image/bgrLogin.jpg")}
-                  style={styles.songImage}
-                />
-
-                {/* TEXT AREA */}
-                <View style={styles.songTextArea}>
-                  <Text
-                    style={[
-                      styles.songTitle,
-                      isActive && styles.songTitleActive,
-                    ]}
-                  >
-                    {item.name}
-                  </Text>
-
-                  <Text style={styles.songArtist}>{item.artist}</Text>
-                </View>
-
-                {/* PLAY BUTTON */}
-                <TouchableOpacity>
+              return (
+                <TouchableOpacity
+                  key={song.id}
+                  onPress={() => onSongPress && onSongPress(song)}
+                  activeOpacity={0.7}
+                >
                   <View
                     style={[
-                      styles.playButton,
-                      isActive && styles.playButtonActive,
+                      styles.songItem,
+                      isActive && styles.activeSongItem,
                     ]}
                   >
-                    <PlayIcon width={14} height={14} fill="#fff" />
+                    {/* IMAGE */}
+                    <Image
+                      source={
+                        song.imageUrl
+                          ? { uri: song.imageUrl }
+                          : require("../../assets/image/bgrLogin.jpg")
+                      }
+                      style={styles.songImage}
+                    />
+
+                    {/* TEXT AREA */}
+                    <View style={styles.songTextArea}>
+                      <Text
+                        style={[
+                          styles.songTitle,
+                          isActive && styles.songTitleActive,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {song.title || "Không có tiêu đề"}
+                      </Text>
+
+                      <Text style={styles.songArtist} numberOfLines={1}>
+                        {song.genreName || song.artistName || "Không rõ thể loại"}
+                      </Text>
+
+                      {song.durationMs && (
+                        <Text style={styles.songDuration}>
+                          {formatTime(song.durationMs)}
+                        </Text>
+                      )}
+                    </View>
+
+                    {/* PLAY BUTTON */}
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        onSongPress && onSongPress(song);
+                      }}
+                    >
+                      <View
+                        style={[
+                          styles.playButton,
+                          isActive && styles.playButtonActive,
+                        ]}
+                      >
+                        <PlayIcon width={32} height={32} fill="#fff" />
+                      </View>
+                    </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
-              </View>
-            );
-          })}
-        </View>
+              );
+            })}
+          </View>
+        )}
 
       </ScrollView>
     </View>
@@ -180,15 +246,72 @@ const styles = StyleSheet.create({
   },
 
   playButton: {
-    width: 36,
-    height: 36,
+    width: 50,
+    height: 50,
     backgroundColor: "#2F343D",
-    borderRadius: 50,
+    borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
   },
 
   playButtonActive: {
     backgroundColor: "#24F7BC",
+  },
+
+  songDuration: {
+    color: "#666",
+    fontSize: 11,
+    marginTop: 2,
+  },
+
+  loadingContainer: {
+    marginTop: 50,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  errorContainer: {
+    marginTop: 50,
+    padding: 20,
+    backgroundColor: "#1C1F26",
+    borderRadius: 15,
+    alignItems: "center",
+  },
+
+  errorText: {
+    color: "#ff4444",
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+
+  errorDetail: {
+    color: "#aaa",
+    fontSize: 12,
+    marginBottom: 15,
+    textAlign: "center",
+  },
+
+  retryButton: {
+    backgroundColor: "#24F7BC",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+
+  retryText: {
+    color: "#000",
+    fontWeight: "600",
+  },
+
+  emptyContainer: {
+    marginTop: 50,
+    padding: 20,
+    alignItems: "center",
+  },
+
+  emptyText: {
+    color: "#777",
+    fontSize: 14,
   },
 });

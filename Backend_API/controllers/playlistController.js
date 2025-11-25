@@ -1,3 +1,5 @@
+const { db } = require("../config/firebase");
+
 exports.getAll = async (req, res) => {
   try {
     const snap = await db.collection("playlists").get();
