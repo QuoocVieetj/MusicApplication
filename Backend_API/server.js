@@ -36,6 +36,5 @@ for (const interfaceName in networkInterfaces) {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running at:`);
   console.log(`   - http://localhost:${PORT}`);
-  console.log(`   - http://${ipAddress}:${PORT}`);
 });
 

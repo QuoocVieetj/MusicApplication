@@ -1,11 +1,6 @@
-// import_songs_multi.js
+// import_songs_multi_with_lyrics.js
 // Usage:
-// node import_songs_multi.js itunes "lofi chill" 25
-//
-// This script imports songs from iTunes and splits data into multiple Firestore collections:
-// songs, artists, albums, genres, playlists, users (skeleton).
-//
-// Make sure firebase-key.json exists locally (DO NOT push it), and that you have firebase-admin installed.
+// node import_songs.js itunes "lofi chill" 25
 
 const fs = require("fs");
 const axios = require("axios");
@@ -24,10 +19,35 @@ const normalizeId = (str) =>
         .replace(/[^a-z0-9]+/g, "_")
         .replace(/^_+|_+$/g, "");
 
-// ---------- iTunes search ----------
+
+// -------------------------------------------------
+// 🔥 Fetch lyrics from LRCLIB (auto)
+// -------------------------------------------------
+async function fetchLyrics(artist, title) {
+    try {
+        const { data } = await axios.get("https://lrclib.net/api/get", {
+            params: {
+                artist_name: artist,
+                track_name: title
+            }
+        });
+
+        return {
+            plain: data.plainLyrics || "",
+            synced: data.syncedLyrics || ""
+        };
+    } catch (err) {
+        console.log(`⚠ No lyrics for: ${artist} - ${title}`);
+        return { plain: "", synced: "" };
+    }
+}
+
+
+// -------------------------------------------------
+// 🔥 iTunes search
+// -------------------------------------------------
 async function searchItunes(term, limit = 25, country = "us") {
-    const url = "https://itunes.apple.com/search";
-    const { data } = await axios.get(url, {
+    const { data } = await axios.get("https://itunes.apple.com/search", {
         params: { term, media: "music", entity: "song", country, limit },
     });
 
@@ -46,42 +66,38 @@ async function searchItunes(term, limit = 25, country = "us") {
         .filter((s) => !!s.audioUrl);
 }
 
-// ---------- Upsert multiple collections ----------
+
+// -------------------------------------------------
+// 🔥 Upsert multiple collections + lyrics
+// -------------------------------------------------
 async function upsertMany(songs) {
     if (!songs.length) return;
 
-    // We'll perform batched writes in chunks
-    const BATCH_LIMIT = 400;
+    const BATCH_LIMIT = 300;
 
-    // We will maintain caches in memory per run to avoid extra reads/writes:
-    // artistCache: { artistId: true }, albumCache, genreCache, songCache
     const artistCache = new Set();
     const albumCache = new Set();
     const genreCache = new Set();
     const songCache = new Set();
-
-    // Prewarm caches by checking existence for a small set? (skip for simplicity)
 
     for (let i = 0; i < songs.length; i += BATCH_LIMIT) {
         const chunk = songs.slice(i, i + BATCH_LIMIT);
         const batch = db.batch();
 
         for (const s of chunk) {
-            // Build ids
+            // Build IDs
             const artistId = `artist_${normalizeId(s.artist || "unknown") || "anon"}`;
             const albumId = `album_${normalizeId(s.album || `${s.artist}_album`)}`;
             const genreId = `genre_${normalizeId(s.genre || "unknown")}`;
-            const songId = `${s.source}_${s.sourceId}`; // e.g., itunes_12345
+            const songId = `${s.source}_${s.sourceId}`;
 
-            // 1) Create artist doc if not cached
+            // Artist
             if (!artistCache.has(artistId)) {
-                const artistRef = db.collection("artists").doc(artistId);
-                // Use set with merge: if exists, won't overwrite custom fields
                 batch.set(
-                    artistRef,
+                    db.collection("artists").doc(artistId),
                     {
-                        name: s.artist || "Unknown Artist",
-                        avatar: s.imageUrl || "",
+                        name: s.artist,
+                        avatar: s.imageUrl,
                         bio: "",
                         followers: 0,
                         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -91,15 +107,14 @@ async function upsertMany(songs) {
                 artistCache.add(artistId);
             }
 
-            // 2) Create album doc if not cached
+            // Album
             if (!albumCache.has(albumId)) {
-                const albumRef = db.collection("albums").doc(albumId);
                 batch.set(
-                    albumRef,
+                    db.collection("albums").doc(albumId),
                     {
                         title: s.album || "Single",
-                        artistId: artistId,
-                        coverUrl: s.imageUrl || "",
+                        artistId,
+                        coverUrl: s.imageUrl,
                         releaseYear: null,
                         genres: s.genre ? [s.genre] : [],
                         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -107,17 +122,14 @@ async function upsertMany(songs) {
                     { merge: true }
                 );
                 albumCache.add(albumId);
-            } else {
-                // Optionally append genre to existing album (omitted for simplicity)
             }
 
-            // 3) Create genre doc if not cached
+            // Genre
             if (!genreCache.has(genreId)) {
-                const genreRef = db.collection("genres").doc(genreId);
                 batch.set(
-                    genreRef,
+                    db.collection("genres").doc(genreId),
                     {
-                        name: s.genre || "Unknown",
+                        name: s.genre,
                         description: "",
                         createdAt: admin.firestore.FieldValue.serverTimestamp(),
                     },
@@ -126,22 +138,34 @@ async function upsertMany(songs) {
                 genreCache.add(genreId);
             }
 
-            // 4) Create song doc
+            // ----------------------------------------------
+            // 🔥 Fetch lyrics for each song (with delay)
+            // ----------------------------------------------
+            const lyrics = await fetchLyrics(s.artist, s.title);
+            await sleep(150); // tránh bị chặn API
+
+            // Song
             if (!songCache.has(songId)) {
-                const songRef = db.collection("songs").doc(songId);
                 batch.set(
-                    songRef,
+                    db.collection("songs").doc(songId),
                     {
-                        title: s.title || "Unknown Title",
+                        title: s.title,
                         artistId,
                         albumId,
                         genreId,
-                        genreName: s.genre || "Unknown",
-                        imageUrl: s.imageUrl || "",
-                        audioUrl: s.audioUrl || "",
-                        durationMs: s.durationMs || 0,
+                        genreName: s.genre,
+                        imageUrl: s.imageUrl,
+                        audioUrl: s.audioUrl,
+                        durationMs: s.durationMs,
                         playCount: 0,
                         likes: 0,
+
+                        // 📌 ADD LYRICS HERE
+                        lyrics: {
+                            plain: lyrics.plain,
+                            synced: lyrics.synced
+                        },
+
                         source: s.source,
                         sourceId: s.sourceId,
                         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -149,41 +173,31 @@ async function upsertMany(songs) {
                     { merge: true }
                 );
                 songCache.add(songId);
-            } else {
-                // optionally update fields if needed
             }
         }
 
-        // commit the batch
         await batch.commit();
-        console.log(`Committed ${chunk.length} items to Firestore.`);
-        await sleep(200);
+        console.log(`✔ Committed ${chunk.length} items to Firestore.`);
     }
 
-    // Optionally: create a system playlist with imported songs (first 100)
+    // Playlist
     try {
-        const playlistRef = db.collection("playlists").doc("import_top_playlist");
-        const sampleSongIds = Array.from(songCache).slice(0, 100);
-        await playlistRef.set(
+        await db.collection("playlists").doc("import_top_playlist").set(
             {
                 title: "Imported Playlist",
                 ownerId: "system",
-                songIds: sampleSongIds,
+                songIds: Array.from(songCache).slice(0, 100),
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                imageUrl: "",
             },
             { merge: true }
         );
-        console.log("Created/updated system playlist: import_top_playlist");
     } catch (err) {
-        console.warn("Playlist create failed:", err.message);
+        console.log("⚠ Playlist error: ", err.message);
     }
 
-    // Optionally: create a demo user skeleton
+    // Demo user
     try {
-        const demoUserId = "user_demo";
-        const userRef = db.collection("users").doc(demoUserId);
-        await userRef.set(
+        await db.collection("users").doc("user_demo").set(
             {
                 name: "Demo User",
                 avatar: "",
@@ -194,34 +208,35 @@ async function upsertMany(songs) {
             },
             { merge: true }
         );
-        console.log("Created demo user: user_demo");
     } catch (err) {
-        console.warn("User create failed:", err.message);
+        console.log("⚠ User create error: ", err.message);
     }
 }
 
-// ---------- Main ----------
+
+// -------------------------------------------------
+// 🔥 Main
+// -------------------------------------------------
 (async () => {
     try {
         const provider = (process.argv[2] || "itunes").toLowerCase();
         const term = process.argv[3] || "lofi";
         const limit = parseInt(process.argv[4] || "20", 10);
 
-        console.log(`Provider: ${provider} | term: "${term}" | limit: ${limit}`);
+        console.log(`Provider: ${provider} | "${term}" | limit: ${limit}`);
 
         let songs = [];
         if (provider === "itunes") {
             songs = await searchItunes(term, limit);
-        } else {
-            throw new Error('Currently only "itunes" provider is implemented.');
         }
 
-        console.log(`Fetched ${songs.length} songs. Importing to Firestore...`);
+        console.log(`Fetched ${songs.length} songs.`);
         await upsertMany(songs);
-        console.log("Import finished.");
+
+        console.log("🎉 Import completed.");
         process.exit(0);
     } catch (e) {
-        console.error("Error:", e.message || e);
+        console.error("Error:", e.message);
         process.exit(1);
     }
 })();
