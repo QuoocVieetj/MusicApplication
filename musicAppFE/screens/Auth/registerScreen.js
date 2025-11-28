@@ -111,7 +111,7 @@ const RegisterScreen = ({ onNavigateToLogin, onRegisterSuccess }) => {
       const idToken = await user.getIdToken(true);
 
       // 4) Gửi qua backend để lưu Firestore
-      const response = await fetch("http://192.168.100.221:8386/api/users", {
+      const response = await fetch("http://10.102.71.80:8386/api/users", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

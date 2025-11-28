@@ -42,8 +42,15 @@ const DetailSong = ({ onBack, song }) => {
     return `${minutes}:${seconds < 10 ? "0" + seconds : seconds}`;
   };
 
-  // Lyrics tạm thời (có thể lấy từ API sau)
-  const lyrics = song?.lyrics || "Chưa có lời bài hát";
+  // Lyrics - xử lý cả string và object
+  const getLyrics = () => {
+    if (!song?.lyrics) return "Chưa có lời bài hát";
+    if (typeof song.lyrics === "string") return song.lyrics;
+    if (song.lyrics.plain) return song.lyrics.plain;
+    if (song.lyrics.synced) return song.lyrics.synced;
+    return "Chưa có lời bài hát";
+  };
+  const lyrics = getLyrics();
 
   // Load và setup audio
   useEffect(() => {
@@ -100,14 +107,33 @@ const DetailSong = ({ onBack, song }) => {
     // Cleanup khi unmount hoặc song thay đổi
     return () => {
       if (sound) {
-        sound.unloadAsync();
+        sound.unloadAsync().catch(() => {});
       }
     };
   }, [song?.audioUrl]);
 
   // Play/Pause handler
   const handlePlayPause = async () => {
-    if (!sound) return;
+    if (!sound) {
+      // Nếu chưa có sound và có audioUrl, thử load lại
+      if (song?.audioUrl) {
+        try {
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: true,
+          });
+          const { sound: newSound } = await Audio.Sound.createAsync(
+            { uri: song.audioUrl },
+            { shouldPlay: true }
+          );
+          setSound(newSound);
+          setIsPlaying(true);
+        } catch (error) {
+          console.error("Error loading audio:", error);
+        }
+      }
+      return;
+    }
 
     try {
       if (isPlaying) {
@@ -133,6 +159,9 @@ const DetailSong = ({ onBack, song }) => {
         </View>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
           <Text style={{ color: "#fff" }}>Không có thông tin bài hát</Text>
+          <TouchableOpacity onPress={onBack} style={{ marginTop: 20, padding: 10 }}>
+            <Text style={{ color: "#24F7BC" }}>Quay lại</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
