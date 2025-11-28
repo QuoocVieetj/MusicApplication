@@ -11,7 +11,7 @@ export const fetchSongs = createAsyncThunk(
     "songs/fetch",
     async () => {
         try {
-            const res = await fetch("http://192.168.100.221:8386/api/songs");
+            const res = await fetch("http://10.102.71.80:8386/api/songs");
             if (!res.ok) {
                 throw new Error(`Fetch songs failed: ${res.status}`);
             }
