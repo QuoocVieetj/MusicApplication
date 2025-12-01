@@ -12,5 +12,5 @@
 // - Nếu chạy trên localhost (chỉ test trên máy) → API_BASE_URL = "http://localhost:8386"
 // - Nếu có domain → API_BASE_URL = "https://yourdomain.com"
 
-export const API_BASE_URL = "http://10.102.71.80:8386";
+export const API_BASE_URL = "http://localhost:8386";
 

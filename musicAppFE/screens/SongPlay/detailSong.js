@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from "react-native";
 import { Audio } from "expo-av";
+import { useSelector } from "react-redux";
 
 import PlayIcon from "../../assets/icons/play.svg";
 import HeartIcon from "../../assets/icons/heart.svg";
@@ -25,13 +26,14 @@ const PauseIcon = ({ width, height, fill }) => (
   </View>
 );
 
-const DetailSong = ({ onBack, song }) => {
+const DetailSong = ({ onBack, song, onChangeSong }) => {
   const scrollRef = useRef(null);
   const [page, setPage] = useState(0);
   const [sound, setSound] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const songs = useSelector((state) => state.songs.list || []);
 
   // Format time từ milliseconds
   const formatTime = (ms) => {
@@ -143,6 +145,36 @@ const DetailSong = ({ onBack, song }) => {
       }
     } catch (error) {
       console.error("Error playing/pausing:", error);
+    }
+  };
+
+  // Chọn bài hát ngẫu nhiên khác bài hiện tại
+  const pickRandomSong = () => {
+    if (!songs || songs.length === 0 || !song) return null;
+    if (songs.length === 1) return song;
+
+    const currentIndex = songs.findIndex((s) => s.id === song.id);
+    let newIndex = currentIndex;
+
+    // Lặp cho đến khi chọn được index khác
+    while (newIndex === currentIndex || newIndex === -1) {
+      newIndex = Math.floor(Math.random() * songs.length);
+    }
+
+    return songs[newIndex];
+  };
+
+  const handleNextSong = () => {
+    const next = pickRandomSong();
+    if (next && onChangeSong) {
+      onChangeSong(next);
+    }
+  };
+
+  const handlePrevSong = () => {
+    const prev = pickRandomSong();
+    if (prev && onChangeSong) {
+      onChangeSong(prev);
     }
   };
 
@@ -260,7 +292,7 @@ const DetailSong = ({ onBack, song }) => {
 
       {/* CONTROLS */}
       <View style={styles.controlsRow}>
-        <TouchableOpacity style={styles.sideButton}>
+        <TouchableOpacity style={styles.sideButton} onPress={handlePrevSong}>
           <PrevIcon width={30} height={30} fill="#fff" />
         </TouchableOpacity>
 
@@ -272,7 +304,7 @@ const DetailSong = ({ onBack, song }) => {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.sideButton}>
+        <TouchableOpacity style={styles.sideButton} onPress={handleNextSong}>
           <NextIcon width={30} height={30} fill="#fff" />
         </TouchableOpacity>
       </View>
