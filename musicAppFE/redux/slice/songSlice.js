@@ -5,6 +5,7 @@ const initialState = {
     list: [],
     status: "idle",
     error: null,
+    searchQuery: "",
 };
 
 // GET LIST SONGS
@@ -27,7 +28,14 @@ export const fetchSongs = createAsyncThunk(
 export const songSlice = createSlice({
     name: "songs",
     initialState,
-    reducers: {},
+    reducers: {
+        setSearchQuery: (state, action) => {
+            state.searchQuery = action.payload || "";
+        },
+        clearSearchQuery: (state) => {
+            state.searchQuery = "";
+        }
+    },
     extraReducers: (builder) => {
         builder
             .addCase(fetchSongs.pending, (state) => {
@@ -44,4 +52,5 @@ export const songSlice = createSlice({
     }
 });
 
+export const { setSearchQuery, clearSearchQuery } = songSlice.actions;
 export const songReducer = songSlice.reducer;

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -11,22 +11,81 @@ import {
 } from "react-native";
 
 import { useDispatch, useSelector } from "react-redux";
-import { fetchSongs } from "../../redux/slice/songSlice";
+import { fetchSongs, setSearchQuery } from "../../redux/slice/songSlice";
 import { fetchAlbums } from "../../redux/slice/albumSlice";
+import { auth } from "../../firebaseConfig";
 
 import SearchIcon from "../../assets/icons/search.svg";
 import PlayIcon from "../../assets/icons/play.svg";
 
-const HomeScreen = ({ onNavigateToList, onSongPress }) => {
+const HomeScreen = ({ onNavigateToList, onSongPress, onNavigateToSearch }) => {
   const dispatch = useDispatch();
-  const { list: songs, status, error } = useSelector((state) => state.songs);
-  const { list: albums, status: albumsStatus, error: albumsError } = useSelector((state) => state.albums);
+  const { list: songs, status, error, searchQuery } = useSelector(
+    (state) => state.songs
+  );
+  const {
+    list: albums,
+    status: albumsStatus,
+    error: albumsError,
+  } = useSelector((state) => state.albums);
+
+  const [displayName, setDisplayName] = useState("Vini");
+
+  // Lấy tên hiển thị từ Firebase Auth
+  useEffect(() => {
+    const current = auth.currentUser;
+    if (current?.displayName) {
+      // Lấy đầy đủ tên người dùng đã nhập khi đăng ký
+      setDisplayName(current.displayName);
+    }
+  }, []);
 
   // LOAD SONGS VÀ ALBUMS KHI VÀO TRANG
   useEffect(() => {
     dispatch(fetchSongs());
     dispatch(fetchAlbums());
   }, []);
+
+  // Helper: bỏ dấu + lowercase để tìm kiếm dễ hơn
+  const normalizeText = (text) =>
+    (text || "")
+      .toString()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+
+  // Map albumId -> album để dễ tra cứu title
+  const albumMap = useMemo(() => {
+    const map = {};
+    (albums || []).forEach((album) => {
+      if (album?.id) {
+        map[album.id] = album;
+      }
+    });
+    return map;
+  }, [albums]);
+
+  // Lọc bài hát theo searchQuery (theo tên bài, nghệ sĩ, thể loại, album)
+  const normalizedQuery = normalizeText(searchQuery || "").trim();
+
+  const filteredSongs =
+    !normalizedQuery
+      ? songs
+      : songs.filter((song) => {
+          const title = normalizeText(song.title || song.name);
+          const artist = normalizeText(song.artistName || song.artist);
+          const genre = normalizeText(song.genreName || song.category);
+          const albumTitle = normalizeText(
+            (albumMap[song.albumId] && albumMap[song.albumId].title) || ""
+          );
+
+          return (
+            title.includes(normalizedQuery) ||
+            artist.includes(normalizedQuery) ||
+            genre.includes(normalizedQuery) ||
+            albumTitle.includes(normalizedQuery)
+          );
+        });
 
   // convert durationMs → 2:30
   const formatTime = (ms) => {
@@ -41,18 +100,20 @@ const HomeScreen = ({ onNavigateToList, onSongPress }) => {
       <ScrollView showsVerticalScrollIndicator={false}>
         
         {/* HEADER */}
-        <Text style={styles.helloText}>Xin chào Vini,</Text>
+        <Text style={styles.helloText}>Xin chào {displayName},</Text>
         <Text style={styles.subText}>Hôm nay bạn muốn nghe gì?</Text>
 
-        {/* SEARCH */}
-        <View style={styles.searchContainer}>
+        {/* SEARCH (chạm vào → sang trang Search) */}
+        <TouchableOpacity
+          style={styles.searchContainer}
+          activeOpacity={0.9}
+          onPress={onNavigateToSearch}
+        >
           <SearchIcon width={20} height={20} fill="#777" />
-          <TextInput
-            placeholder="Tìm kiếm bài hát, nghệ sĩ..."
-            placeholderTextColor="#777"
-            style={styles.searchInput}
-          />
-        </View>
+          <Text style={[styles.searchInput, { color: "#777" }]}>
+            Tìm kiếm bài hát, nghệ sĩ...
+          </Text>
+        </TouchableOpacity>
 
         {/* TAB */}
         <View style={styles.tabRow}>
@@ -119,7 +180,7 @@ const HomeScreen = ({ onNavigateToList, onSongPress }) => {
         {status === "failed" && (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>
-              ❌ Không thể tải dữ liệu
+               Không thể tải dữ liệu
             </Text>
             <Text style={styles.errorDetail}>{error}</Text>
             <TouchableOpacity
@@ -139,7 +200,7 @@ const HomeScreen = ({ onNavigateToList, onSongPress }) => {
         )}
 
         {/* SONG LIST */}
-        {status === "success" && songs.length > 0 && songs.map((song) => (
+        {status === "success" && filteredSongs.length > 0 && filteredSongs.map((song) => (
           <TouchableOpacity
             key={song.id}
             onPress={() => onSongPress && onSongPress(song)}

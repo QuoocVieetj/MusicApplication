@@ -11,6 +11,8 @@ import RegisterScreen from "./screens/Auth/registerScreen";
 import HomeScreen from "./screens/Home/homeScreen";
 import ListScreen from "./screens/List/listScreen";
 import DetailSong from "./screens/SongPlay/detailSong";
+import SearchScreen from "./screens/Search/searchScreen";
+import ProfileScreen from "./screens/Profile/profileScreen";
 import FooterComponent from "./components/footerComponent";
 
 const App = () => {
@@ -24,10 +26,15 @@ const App = () => {
   const navigateToLogin = () => setCurrentScreen("Login");
   const navigateToHome = () => setCurrentScreen("Home");
   const navigateToList = () => setCurrentScreen("List");
+  const navigateToSearch = () => setCurrentScreen("Search");
+  const navigateToProfile = () => setCurrentScreen("Profile");
   const navigateToDetail = (song) => {
     setSelectedSong(song);
     setPreviousScreen(currentScreen); // Lưu màn hình hiện tại
     setCurrentScreen("DetailSong");
+  };
+  const changeSongInDetail = (song) => {
+    setSelectedSong(song);
   };
   
   const navigateBackFromDetail = () => {
@@ -60,8 +67,14 @@ const App = () => {
             <HomeScreen
               onNavigateToList={navigateToList}
               onSongPress={navigateToDetail}  // Nhấn bài hát → Detail
+              onNavigateToSearch={navigateToSearch}
             />
-            <FooterComponent />
+            <FooterComponent
+              activeTab="home"
+              onPressHome={navigateToHome}
+              onPressList={navigateToList}  // Nhấn icon list → màn List
+              onPressPerson={navigateToProfile}
+            />
           </View>
         )}
 
@@ -72,7 +85,12 @@ const App = () => {
               onBack={navigateToHome}
               onSongPress={navigateToDetail}   // Nhấn bài hát → Detail
             />
-            <FooterComponent />
+            <FooterComponent
+              activeTab="list"
+              onPressHome={navigateToHome}
+              onPressList={navigateToList}
+              onPressPerson={navigateToProfile}
+            />
           </View>
         )}
 
@@ -82,8 +100,38 @@ const App = () => {
             <DetailSong 
               onBack={navigateBackFromDetail}
               song={selectedSong}
+              onChangeSong={changeSongInDetail}
             />
             {/* Không có Footer ở đây */}
+          </View>
+        )}
+
+        {/* SEARCH */}
+        {currentScreen === "Search" && (
+          <View style={{ flex: 1 }}>
+            <SearchScreen
+              onBack={navigateToHome}
+              onSongPress={navigateToDetail}
+            />
+            <FooterComponent
+              activeTab="home"
+              onPressHome={navigateToHome}
+              onPressList={navigateToList}
+              onPressPerson={navigateToProfile}
+            />
+          </View>
+        )}
+
+        {/* PROFILE */}
+        {currentScreen === "Profile" && (
+          <View style={{ flex: 1 }}>
+            <ProfileScreen />
+            <FooterComponent
+              activeTab="person"
+              onPressHome={navigateToHome}
+              onPressList={navigateToList}
+              onPressPerson={navigateToProfile}
+            />
           </View>
         )}
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { View, TouchableOpacity, StyleSheet } from "react-native";
 
 // Import SVG icons
@@ -8,14 +8,27 @@ import PlayIcon from "../assets/icons/play.svg";
 import PersonIcon from "../assets/icons/person.svg";
 import ListIcon from "../assets/icons/list.svg";
 
-const FooterComponent = () => {
-  const [activeTab, setActiveTab] = useState("home");
-  
+const FooterComponent = ({
+  activeTab = "home",
+  onPressHome,
+  onPressList,
+  onPressPlay,
+  onPressHeart,
+  onPressPerson,
+}) => {
+  const handlePress = (callback) => {
+    if (typeof callback === "function") {
+      callback();
+    }
+  };
 
   return (
     <View style={styles.footerContainer}>
       {/* HOME */}
-      <TouchableOpacity style={styles.tab} onPress={() => setActiveTab("home")}>
+      <TouchableOpacity
+        style={styles.tab}
+        onPress={() => handlePress(onPressHome)}
+      >
         <HomeIcon
           width={26}
           height={26}
@@ -25,7 +38,10 @@ const FooterComponent = () => {
       </TouchableOpacity>
 
       {/* LIST */}
-      <TouchableOpacity style={styles.tab} onPress={() => setActiveTab("list")}>
+      <TouchableOpacity
+        style={styles.tab}
+        onPress={() => handlePress(onPressList)}
+      >
         <ListIcon
           width={26}
           height={26}
@@ -35,7 +51,10 @@ const FooterComponent = () => {
       </TouchableOpacity>
 
       {/* PLAY */}
-      <TouchableOpacity style={styles.tab} onPress={() => setActiveTab("play")}>
+      <TouchableOpacity
+        style={styles.tab}
+        onPress={() => handlePress(onPressPlay)}
+      >
         <PlayIcon
           width={26}
           height={26}
@@ -47,7 +66,7 @@ const FooterComponent = () => {
       {/* HEART */}
       <TouchableOpacity
         style={styles.tab}
-        onPress={() => setActiveTab("heart")}
+        onPress={() => handlePress(onPressHeart)}
       >
         <HeartIcon
           width={26}
@@ -60,7 +79,7 @@ const FooterComponent = () => {
       {/* PERSON */}
       <TouchableOpacity
         style={styles.tab}
-        onPress={() => setActiveTab("person")}
+        onPress={() => handlePress(onPressPerson)}
       >
         <PersonIcon
           width={26}
