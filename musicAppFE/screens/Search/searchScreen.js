@@ -10,44 +10,29 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchSongs, setSearchQuery } from "../../redux/slice/songSlice";
+import { searchSongs, setSearchQuery } from "../../redux/slice/songSlice";
 
 import SearchIcon from "../../assets/icons/search.svg";
 
-// Helper: bỏ dấu + lowercase
-const normalizeText = (text) =>
-  (text || "")
-    .toString()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-
 const SearchScreen = ({ onBack, onSongPress }) => {
   const dispatch = useDispatch();
-  const { list: songs, status, error, searchQuery } = useSelector(
-    (state) => state.songs
-  );
+  const { 
+    searchResults, 
+    searchStatus, 
+    searchError, 
+    searchQuery 
+  } = useSelector((state) => state.songs);
 
-  // Load songs nếu chưa có
+  // Debounce search - tìm kiếm sau khi user ngừng gõ 500ms
   useEffect(() => {
-    if (!songs || songs.length === 0) {
-      dispatch(fetchSongs());
-    }
-  }, []);
+    const timeoutId = setTimeout(() => {
+      if (searchQuery && searchQuery.trim() !== "") {
+        dispatch(searchSongs(searchQuery.trim()));
+      }
+    }, 500);
 
-  const q = normalizeText(searchQuery || "").trim();
-
-  const filtered =
-    !q || !songs
-      ? songs || []
-      : songs.filter((song) => {
-          const title = normalizeText(song.title || "");
-          const artist = normalizeText(song.artistName || "");
-          const genre = normalizeText(song.genreName || "");
-          return (
-            title.includes(q) || artist.includes(q) || genre.includes(q)
-          );
-        });
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, dispatch]);
 
   return (
     <View style={styles.container}>
@@ -71,7 +56,7 @@ const SearchScreen = ({ onBack, onSongPress }) => {
       </View>
 
       {/* LOADING */}
-      {status === "loading" && (
+      {searchStatus === "loading" && (
         <ActivityIndicator
           size="large"
           color="#24F7BC"
@@ -80,10 +65,10 @@ const SearchScreen = ({ onBack, onSongPress }) => {
       )}
 
       {/* ERROR */}
-      {status === "failed" && (
+      {searchStatus === "failed" && (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Không thể tải dữ liệu</Text>
-          <Text style={styles.errorDetail}>{error}</Text>
+          <Text style={styles.errorText}>Không thể tìm kiếm</Text>
+          <Text style={styles.errorDetail}>{searchError}</Text>
         </View>
       )}
 
@@ -92,7 +77,7 @@ const SearchScreen = ({ onBack, onSongPress }) => {
         style={{ marginTop: 16 }}
         showsVerticalScrollIndicator={false}
       >
-        {filtered.map((song) => (
+        {searchResults.map((song) => (
           <TouchableOpacity
             key={song.id}
             activeOpacity={0.8}
@@ -122,9 +107,15 @@ const SearchScreen = ({ onBack, onSongPress }) => {
           </TouchableOpacity>
         ))}
 
-        {status === "success" && filtered.length === 0 && (
+        {searchStatus === "success" && searchResults.length === 0 && searchQuery && (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>Không tìm thấy kết quả phù hợp</Text>
+          </View>
+        )}
+
+        {!searchQuery && (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Nhập từ khóa để tìm kiếm...</Text>
           </View>
         )}
       </ScrollView>

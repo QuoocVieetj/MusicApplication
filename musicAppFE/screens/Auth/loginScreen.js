@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -13,7 +13,8 @@ import {
 } from "react-native";
 
 import { LinearGradient } from "expo-linear-gradient";
-import supabase from "../../supabaseClient";
+import { useDispatch, useSelector } from "react-redux";
+import { login } from "../../redux/slice/authSlice";
 
 const bgImage = require("../../assets/image/bgrLogin.jpg");
 
@@ -73,7 +74,29 @@ const LoginScreen = ({ onNavigateToRegister, onLoginSuccess }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
+  const { status, error } = useSelector((state) => state.auth);
+
+  // Khi login thành công
+  useEffect(() => {
+    if (status === "success") {
+      Alert.alert("Thành công", "Đăng nhập thành công!");
+      onLoginSuccess && onLoginSuccess();
+    }
+  }, [status]);
+
+  // Khi có lỗi
+  useEffect(() => {
+    if (status === "failed" && error) {
+      if (error.includes("Invalid login credentials")) {
+        Alert.alert("Lỗi", "Email hoặc mật khẩu không đúng");
+      } else if (error.includes("Email not confirmed")) {
+        Alert.alert("Lỗi", "Vui lòng xác nhận email của bạn");
+      } else {
+        Alert.alert("Lỗi", error || "Đăng nhập thất bại");
+      }
+    }
+  }, [status, error]);
 
   const loginUser = async () => {
     if (!email || !password) {
@@ -81,33 +104,7 @@ const LoginScreen = ({ onNavigateToRegister, onLoginSuccess }) => {
       return;
     }
 
-    try {
-      setLoading(true);
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
-      });
-
-      if (error) {
-        if (error.message.includes("Invalid login credentials")) {
-          Alert.alert("Lỗi", "Email hoặc mật khẩu không đúng");
-        } else if (error.message.includes("Email not confirmed")) {
-          Alert.alert("Lỗi", "Vui lòng xác nhận email của bạn");
-        } else {
-          Alert.alert("Lỗi", error.message || "Đăng nhập thất bại");
-        }
-        return;
-      }
-
-      Alert.alert("Thành công", "Đăng nhập thành công!");
-      onLoginSuccess && onLoginSuccess();
-
-    } catch (error) {
-      Alert.alert("Lỗi", error.message || "Đăng nhập thất bại");
-    } finally {
-      setLoading(false);
-    }
+    dispatch(login({ email, password }));
   };
 
   return (
@@ -160,16 +157,7 @@ const LoginScreen = ({ onNavigateToRegister, onLoginSuccess }) => {
           </View>
 
           {/* Nút login */}
-          <GradientButton title="Đăng nhập" onPress={loginUser} loading={loading} />
-
-          <View style={styles.separatorContainer}>
-            <View className="line" />
-            <Text style={styles.separatorText}>Hoặc</Text>
-            <View className="line" />
-          </View>
-
-          {/* Google Login */}
-          <GoogleButton title="Đăng nhập với Google" onPress={() => {}} />
+          <GradientButton title="Đăng nhập" onPress={loginUser} loading={status === "loading"} />
 
           <View style={styles.footerRow}>
             <Text style={styles.footerText}>Chưa có tài khoản?</Text>

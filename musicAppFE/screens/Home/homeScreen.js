@@ -30,6 +30,7 @@ const HomeScreen = ({ onNavigateToList, onSongPress, onNavigateToSearch }) => {
   } = useSelector((state) => state.albums);
 
   const [displayName, setDisplayName] = useState("Vini");
+  const [selectedAlbumId, setSelectedAlbumId] = useState(null);
 
   // Lấy tên hiển thị từ Supabase Auth
   useEffect(() => {
@@ -76,20 +77,31 @@ const HomeScreen = ({ onNavigateToList, onSongPress, onNavigateToSearch }) => {
     !normalizedQuery
       ? songs
       : songs.filter((song) => {
-          const title = normalizeText(song.title || song.name);
-          const artist = normalizeText(song.artistName || song.artist);
-          const genre = normalizeText(song.genreName || song.category);
-          const albumTitle = normalizeText(
-            (albumMap[song.albumId] && albumMap[song.albumId].title) || ""
-          );
+        const title = normalizeText(song.title || song.name);
+        const artist = normalizeText(song.artistName || song.artist);
+        const genre = normalizeText(song.genreName || song.category);
+        const albumTitle = normalizeText(
+          (albumMap[song.albumId] && albumMap[song.albumId].title) || ""
+        );
 
-          return (
-            title.includes(normalizedQuery) ||
-            artist.includes(normalizedQuery) ||
-            genre.includes(normalizedQuery) ||
-            albumTitle.includes(normalizedQuery)
-          );
-        });
+        return (
+          title.includes(normalizedQuery) ||
+          artist.includes(normalizedQuery) ||
+          genre.includes(normalizedQuery) ||
+          albumTitle.includes(normalizedQuery)
+        );
+      });
+
+  // Songs by selected album
+  const songsByAlbum = useMemo(() => {
+    if (!selectedAlbumId) return [];
+    return (songs || []).filter(
+      (s) =>
+        s.albumId === selectedAlbumId ||
+        s.album_id === selectedAlbumId ||
+        s.albumId === albumMap[selectedAlbumId]?.id
+    );
+  }, [selectedAlbumId, songs, albumMap]);
 
   // convert durationMs → 2:30
   const formatTime = (ms) => {
@@ -102,7 +114,7 @@ const HomeScreen = ({ onNavigateToList, onSongPress, onNavigateToSearch }) => {
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        
+
         {/* HEADER */}
         <Text style={styles.helloText}>Xin chào {displayName},</Text>
         <Text style={styles.subText}>Hôm nay bạn muốn nghe gì?</Text>
@@ -139,11 +151,20 @@ const HomeScreen = ({ onNavigateToList, onSongPress, onNavigateToSearch }) => {
             style={{ marginBottom: 25 }}
           />
         )}
-        
+
         {albumsStatus === "success" && albums.length > 0 && (
           <View style={styles.cardRow}>
             {albums.slice(0, 2).map((album) => (
-              <View key={album.id} style={styles.card}>
+              <TouchableOpacity
+                key={album.id}
+                style={[
+                  styles.card,
+                  selectedAlbumId === album.id && { borderColor: "#24F7BC", borderWidth: 1 },
+                ]}
+                onPress={() =>
+                  setSelectedAlbumId((prev) => (prev === album.id ? null : album.id))
+                }
+              >
                 <Image
                   source={album.coverUrl ? { uri: album.coverUrl } : require("../../assets/image/bgrLogin.jpg")}
                   style={styles.cardImage}
@@ -154,8 +175,60 @@ const HomeScreen = ({ onNavigateToList, onSongPress, onNavigateToSearch }) => {
                 <Text style={styles.cardSubtitle} numberOfLines={1}>
                   {album.genres && album.genres.length > 0 ? album.genres[0] : "Không rõ thể loại"}
                 </Text>
-              </View>
+              </TouchableOpacity>
             ))}
+          </View>
+        )}
+
+        {/* SONGS BY SELECTED ALBUM */}
+        {selectedAlbumId && (
+          <View style={{ marginTop: 10 }}>
+            <View style={styles.recentHeaderRow}>
+              <Text style={styles.recentHeader}>
+                Bài hát trong album: {albumMap[selectedAlbumId]?.title || ""}
+              </Text>
+              <TouchableOpacity onPress={() => setSelectedAlbumId(null)}>
+                <Text style={styles.seeAll}>Đóng</Text>
+              </TouchableOpacity>
+            </View>
+
+            {songsByAlbum.length === 0 ? (
+              <Text style={{ color: "#777", paddingHorizontal: 10 }}>Chưa có bài hát</Text>
+            ) : (
+              songsByAlbum.map((song) => (
+                <TouchableOpacity
+                  key={song.id}
+                  onPress={() => onSongPress && onSongPress(song)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.recentItem}>
+                    <Image
+                      source={song.imageUrl ? { uri: song.imageUrl } : require("../../assets/image/bgrLogin.jpg")}
+                      style={styles.recentImage}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.recentTitle}>{song.title || "Không có tiêu đề"}</Text>
+                      <Text style={styles.recentArtist}>
+                        {song.genreName || song.artistName || "Không rõ thể loại"}
+                      </Text>
+                      <Text style={styles.recentTime}>
+                        {song.durationMs ? formatTime(song.durationMs) : "0:00"}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        onSongPress && onSongPress(song);
+                      }}
+                    >
+                      <View style={styles.playButton}>
+                        <PlayIcon width={32} height={32} fill="#fff" />
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
           </View>
         )}
 
@@ -184,7 +257,7 @@ const HomeScreen = ({ onNavigateToList, onSongPress, onNavigateToSearch }) => {
         {status === "failed" && (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>
-               Không thể tải dữ liệu
+              Không thể tải dữ liệu
             </Text>
             <Text style={styles.errorDetail}>{error}</Text>
             <TouchableOpacity

@@ -19,7 +19,7 @@ const PORT = 8386;
 // Lấy IP address động
 const os = require('os');
 const networkInterfaces = os.networkInterfaces();
-let ipAddress = '192.168.1.71'; // default
+let ipAddress = '192.168.1.249'; // default
 
 for (const interfaceName in networkInterfaces) {
   for (const iface of networkInterfaces[interfaceName]) {
@@ -33,6 +33,5 @@ for (const interfaceName in networkInterfaces) {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running at:`);
   console.log(`   - http://localhost:${PORT}`);
-  console.log(`   - http://${ipAddress}:${PORT}`);
 });
 

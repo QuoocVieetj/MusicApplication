@@ -1,117 +1,49 @@
-// =========================
-// USERS CONTROLLER MERGED
-// =========================
+const supabase = require('../config/supabase');
 
-// Supabase DB
-const supabase = require("../config/supabase");
+// GET all users
+async function getAllUsers(req, res) {
+  const { data, error } = await supabase.from('users').select('*');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+}
 
-// =========================
-// GET ALL USERS
-// =========================
-exports.getAll = async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("users")
-      .select("*");
-    
-    if (error) throw error;
-    res.json(data || []);
-  } catch (e) {
-    console.error("Error fetching users:", e);
-    res.status(500).json({ message: "Error", error: e.message });
-  }
-};
+// GET user by ID
+async function getUserById(req, res) {
+  const { id } = req.params;
+  const { data, error } = await supabase.from('users').select('*').eq('id', id).single();
+  if (error) return res.status(404).json({ error: error.message });
+  res.json(data);
+}
 
-// =========================
-// GET USER BY ID
-// =========================
-exports.getById = async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", req.params.id)
-      .single();
-    
-    if (error) throw error;
-    res.json(data);
-  } catch (e) {
-    console.error("Error fetching user:", e);
-    res.status(500).json({ message: "Error", error: e.message });
-  }
-};
+// CREATE new user
+async function createUser(req, res) {
+  const { id, name, avatar } = req.body;
+  const { data, error } = await supabase.from('users').insert([{ id, name, avatar }]);
+  if (error) return res.status(400).json({ error: error.message });
+  res.status(201).json(data[0]);
+}
 
-// =========================
-// CREATE USER (SAFE VERSION)
-// =========================
-exports.create = async (req, res) => {
-  try {
-    const tokenUser = req.user; // Supabase token đã verify  
-    const body = req.body;
+// UPDATE user
+async function updateUser(req, res) {
+  const { id } = req.params;
+  const updates = req.body;
+  const { data, error } = await supabase.from('users').update(updates).eq('id', id).select();
+  if (error) return res.status(400).json({ error: error.message });
+  res.json(data[0]);
+}
 
-    // ❗ KIỂM TRA BẢO MẬT:
-    // userId từ client phải KHỚP với uid trong Supabase Token
-    if (!tokenUser || tokenUser.uid !== body.userId) {
-      return res.status(403).json({ message: "Không hợp lệ: userId mismatch" });
-    }
+// DELETE user
+async function deleteUser(req, res) {
+  const { id } = req.params;
+  const { data, error } = await supabase.from('users').delete().eq('id', id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: 'User deleted', data });
+}
 
-    // Nếu client không gửi createdAt → tự thêm
-    body.createdAt = body.createdAt || new Date().toISOString();
-
-    // Lưu vào Supabase
-    const { data, error } = await supabase
-      .from("users")
-      .insert(body)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    res.json({
-      id: data.id,
-      ...data,
-    });
-
-  } catch (e) {
-    console.error("❌ Create user error:", e);
-    res.status(500).json({ message: "Error creating user", error: e.message });
-  }
-};
-
-// =========================
-// UPDATE USER
-// =========================
-exports.update = async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("users")
-      .update(req.body)
-      .eq("id", req.params.id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    res.json({ message: "Updated", ...data });
-  } catch (e) {
-    console.error("Error updating user:", e);
-    res.status(500).json({ message: "Error", error: e.message });
-  }
-};
-
-// =========================
-// DELETE USER
-// =========================
-exports.delete = async (req, res) => {
-  try {
-    const { error } = await supabase
-      .from("users")
-      .delete()
-      .eq("id", req.params.id);
-    
-    if (error) throw error;
-    res.json({ message: "Deleted" });
-  } catch (e) {
-    console.error("Error deleting user:", e);
-    res.status(500).json({ message: "Error", error: e.message });
-  }
+module.exports = {
+  getAllUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser
 };

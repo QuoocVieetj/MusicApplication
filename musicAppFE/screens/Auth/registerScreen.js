@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -13,8 +13,9 @@ import {
 } from "react-native";
 
 import { LinearGradient } from "expo-linear-gradient";
-import supabase from "../../supabaseClient";
 import { API_BASE_URL } from "../../config/apiConfig";
+import { useDispatch, useSelector } from "react-redux";
+import { register } from "../../redux/slice/authSlice";
 
 const bgImage = require("../../assets/image/bgrLogin.jpg");
 
@@ -76,7 +77,21 @@ const RegisterScreen = ({ onNavigateToLogin, onRegisterSuccess }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
+  const { status, error } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    if (status === "success") {
+      Alert.alert("Thành công", "Tạo tài khoản thành công!");
+      onRegisterSuccess && onRegisterSuccess();
+    }
+  }, [status]);
+
+  useEffect(() => {
+    if (status === "failed" && error) {
+      Alert.alert("Lỗi", error || "Đăng ký thất bại");
+    }
+  }, [status, error]);
 
   const registerUser = async () => {
     if (!name || !email || !password) {
@@ -89,65 +104,7 @@ const RegisterScreen = ({ onNavigateToLogin, onRegisterSuccess }) => {
       return;
     }
 
-    try {
-      setLoading(true);
-
-      // 1) Tạo user trên Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email,
-        password: password,
-        options: {
-          data: {
-            display_name: name,
-          },
-        },
-      });
-
-      if (authError) {
-        throw new Error(authError.message);
-      }
-
-      const user = authData.user;
-      if (!user) {
-        throw new Error("Không thể tạo tài khoản");
-      }
-
-      // 2) Lấy access token từ session
-      const session = authData.session;
-      const accessToken = session?.access_token;
-
-      // 3) Gửi qua backend để lưu vào database
-      if (accessToken) {
-        const response = await fetch(`${API_BASE_URL}/api/users`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            userId: user.id,
-            displayName: name,
-            email: email,
-            avatarUrl: "",
-            likedSongs: [],
-            playlists: [],
-            createdAt: new Date().toISOString(),
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Không thể lưu user vào server");
-        }
-      }
-
-      Alert.alert("Thành công", "Tạo tài khoản thành công!");
-      onRegisterSuccess && onRegisterSuccess();
-
-    } catch (error) {
-      Alert.alert("Lỗi", error.message || "Đăng ký thất bại");
-    } finally {
-      setLoading(false);
-    }
+    dispatch(register({ email, password, displayName: name }));
   };
 
   return (
@@ -193,17 +150,8 @@ const RegisterScreen = ({ onNavigateToLogin, onRegisterSuccess }) => {
           <GradientButton
             title="Đăng ký"
             onPress={registerUser}
-            loading={loading}
+            loading={status === "loading"}
           />
-
-          {/* SEPARATOR */}
-          <View style={styles.separatorContainer}>
-            <View style={styles.line} />
-            <Text style={styles.separatorText}>Hoặc tiếp tục với</Text>
-            <View style={styles.line} />
-          </View>
-
-          <GoogleButton title="Đăng ký với Google" onPress={() => {}} />
 
           {/* FOOTER */}
           <View style={styles.footerRow}>

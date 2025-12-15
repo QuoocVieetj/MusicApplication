@@ -1,6 +1,22 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { API_BASE_URL } from "../../config/apiConfig";
 
+// Chuẩn hóa dữ liệu album từ API (snake_case -> camelCase, map cover_url)
+const normalizeAlbum = (album) => {
+    if (!album) return album;
+    return {
+        ...album,
+        coverUrl:
+            album.coverUrl ||
+            album.cover_url ||
+            album.image_url ||
+            null,
+        title: album.title || "",
+        artistId: album.artist_id || album.artistId || "",
+        genres: album.genres || [], // fallback nếu backend chưa trả genres
+    };
+};
+
 const initialState = {
     list: [],
     status: "idle",
@@ -35,7 +51,7 @@ export const albumSlice = createSlice({
             })
             .addCase(fetchAlbums.fulfilled, (state, action) => {
                 state.status = "success";
-                state.list = action.payload;
+                state.list = (action.payload || []).map(normalizeAlbum);
             })
             .addCase(fetchAlbums.rejected, (state, action) => {
                 state.status = "failed";

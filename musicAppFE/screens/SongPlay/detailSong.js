@@ -29,6 +29,7 @@ const PauseIcon = ({ width, height, fill }) => (
 const DetailSong = ({ onBack, song, onChangeSong }) => {
   const scrollRef = useRef(null);
   const [page, setPage] = useState(0);
+  const soundRef = useRef(null); // giữ sound instance duy nhất
   const [sound, setSound] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -60,9 +61,11 @@ const DetailSong = ({ onBack, song, onChangeSong }) => {
 
     const loadAudio = async () => {
       try {
-        // Unload sound cũ nếu có
-        if (sound) {
-          await sound.unloadAsync();
+        // Unload sound cũ nếu có (đảm bảo chỉ 1 sound)
+        if (soundRef.current) {
+          await soundRef.current.unloadAsync();
+          soundRef.current = null;
+          setSound(null);
         }
 
         // Cấu hình audio mode
@@ -98,6 +101,7 @@ const DetailSong = ({ onBack, song, onChangeSong }) => {
           }
         });
 
+        soundRef.current = newSound;
         setSound(newSound);
       } catch (error) {
         console.error("Error loading audio:", error);
@@ -108,15 +112,18 @@ const DetailSong = ({ onBack, song, onChangeSong }) => {
 
     // Cleanup khi unmount hoặc song thay đổi
     return () => {
-      if (sound) {
-        sound.unloadAsync().catch(() => {});
+      if (soundRef.current) {
+        soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
       }
     };
   }, [song?.audioUrl]);
 
-  // Play/Pause handler
+  // Play/Stop handler (dừng và tua về đầu khi đang phát, phát lại khi đang dừng)
   const handlePlayPause = async () => {
-    if (!sound) {
+    const soundInstance = soundRef.current;
+
+    if (!soundInstance) {
       // Nếu chưa có sound và có audioUrl, thử load lại
       if (song?.audioUrl) {
         try {
@@ -128,6 +135,7 @@ const DetailSong = ({ onBack, song, onChangeSong }) => {
             { uri: song.audioUrl },
             { shouldPlay: true }
           );
+          soundRef.current = newSound;
           setSound(newSound);
           setIsPlaying(true);
         } catch (error) {
@@ -139,12 +147,29 @@ const DetailSong = ({ onBack, song, onChangeSong }) => {
 
     try {
       if (isPlaying) {
-        await sound.pauseAsync();
+        // Dừng và tua về đầu
+        await soundInstance.stopAsync();
+        await soundInstance.setPositionAsync(0);
+        setCurrentTime(0);
+        setIsPlaying(false);
       } else {
-        await sound.playAsync();
+        await soundInstance.playAsync();
       }
     } catch (error) {
       console.error("Error playing/pausing:", error);
+    }
+  };
+
+  // Stop handler: dừng và tua về đầu
+  const handleStop = async () => {
+    if (!sound) return;
+    try {
+      await sound.stopAsync();
+      await sound.setPositionAsync(0);
+      setIsPlaying(false);
+      setCurrentTime(0);
+    } catch (error) {
+      console.error("Error stopping:", error);
     }
   };
 
@@ -315,7 +340,7 @@ const DetailSong = ({ onBack, song, onChangeSong }) => {
 
 export default DetailSong;
 
-/* ====================== ★ STYLE SIÊU ĐẸP – HIỆN ĐẠI ★ ====================== */
+
 
 const IMAGE_HEIGHT = height * 0.45;
 

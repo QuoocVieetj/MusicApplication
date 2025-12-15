@@ -1,79 +1,44 @@
-const supabase = require("../config/supabase");
+const supabase = require('../config/supabase');
 
-exports.getAll = async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("artists")
-      .select("*");
-    
-    if (error) throw error;
-    res.json(data || []);
-  } catch (e) {
-    console.error("Error fetching artists:", e);
-    res.status(500).json({ message: "Error", error: e.message });
-  }
-};
+async function getAllArtists(req, res) {
+  const { data, error } = await supabase.from('artists').select('*');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+}
 
-exports.getById = async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("artists")
-      .select("*")
-      .eq("id", req.params.id)
-      .single();
-    
-    if (error) throw error;
-    res.json(data);
-  } catch (e) {
-    console.error("Error fetching artist:", e);
-    res.status(500).json({ message: "Error", error: e.message });
-  }
-};
+async function getArtistById(req, res) {
+  const { id } = req.params;
+  const { data, error } = await supabase.from('artists').select('*').eq('id', id).single();
+  if (error) return res.status(404).json({ error: error.message });
+  res.json(data);
+}
 
-exports.create = async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("artists")
-      .insert(req.body)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    res.json({ id: data.id, ...data });
-  } catch (e) {
-    console.error("Error creating artist:", e);
-    res.status(500).json({ message: "Error", error: e.message });
-  }
-};
+async function createArtist(req, res) {
+  const { id, name, avatar } = req.body;
+  const { data, error } = await supabase.from('artists').insert([{ id, name, avatar }]);
+  if (error) return res.status(400).json({ error: error.message });
+  res.status(201).json(data[0]);
+}
 
-exports.update = async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("artists")
-      .update(req.body)
-      .eq("id", req.params.id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    res.json({ message: "Updated", ...data });
-  } catch (e) {
-    console.error("Error updating artist:", e);
-    res.status(500).json({ message: "Error", error: e.message });
-  }
-};
+async function updateArtist(req, res) {
+  const { id } = req.params;
+  const updates = req.body;
+  const { data, error } = await supabase.from('artists').update(updates).eq('id', id).select();
+  if (error) return res.status(400).json({ error: error.message });
+  res.json(data[0]);
+}
 
-exports.delete = async (req, res) => {
-  try {
-    const { error } = await supabase
-      .from("artists")
-      .delete()
-      .eq("id", req.params.id);
-    
-    if (error) throw error;
-    res.json({ message: "Deleted" });
-  } catch (e) {
-    console.error("Error deleting artist:", e);
-    res.status(500).json({ message: "Error", error: e.message });
-  }
+async function deleteArtist(req, res) {
+  const { id } = req.params;
+  const { data, error } = await supabase.from('artists').delete().eq('id', id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: 'Artist deleted', data });
+}
+
+module.exports = {
+  getAllArtists,
+  getArtistById,
+  createArtist,
+  updateArtist,
+  deleteArtist
 };
