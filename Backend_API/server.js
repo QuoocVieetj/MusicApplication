@@ -19,7 +19,7 @@ const PORT = 8386;
 // Lấy IP address động
 const os = require('os');
 const networkInterfaces = os.networkInterfaces();
-let ipAddress = '192.168.1.71'; // default
+let ipAddress = '192.168.1.48'; // default
 
 for (const interfaceName in networkInterfaces) {
   for (const iface of networkInterfaces[interfaceName]) {

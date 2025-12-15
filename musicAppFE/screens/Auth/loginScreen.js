@@ -168,8 +168,8 @@ const LoginScreen = ({ onNavigateToRegister, onLoginSuccess }) => {
             <View className="line" />
           </View>
 
-          {/* Google Login */}
-          <GoogleButton title="Đăng nhập với Google" onPress={() => {}} />
+          {/* Google Login
+          <GoogleButton title="Đăng nhập với Google" onPress={() => {}} /> */}
 
           <View style={styles.footerRow}>
             <Text style={styles.footerText}>Chưa có tài khoản?</Text>

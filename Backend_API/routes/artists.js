@@ -1,10 +1,11 @@
-const router = require("express").Router();
-const c = require("../controllers/artistController");
+const express = require('express');
+const router = express.Router();
+const artistsController = require('../controllers/artistController');
 
-router.get("/", c.getAll);
-router.get("/:id", c.getById);
-router.post("/", c.create);
-router.put("/:id", c.update);
-router.delete("/:id", c.delete);
+router.get('/', artistsController.getAllArtists);
+router.get('/:id', artistsController.getArtistById);
+router.post('/', artistsController.createArtist);
+router.put('/:id', artistsController.updateArtist);
+router.delete('/:id', artistsController.deleteArtist);
 
 module.exports = router;

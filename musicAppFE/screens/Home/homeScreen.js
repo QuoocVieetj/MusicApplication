@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   Image,
   StyleSheet,
   ScrollView,
@@ -11,7 +10,7 @@ import {
 } from "react-native";
 
 import { useDispatch, useSelector } from "react-redux";
-import { fetchSongs, setSearchQuery } from "../../redux/slice/songSlice";
+import { fetchSongs } from "../../redux/slice/songSlice";
 import { fetchAlbums } from "../../redux/slice/albumSlice";
 import supabase from "../../supabaseClient";
 
@@ -20,21 +19,21 @@ import PlayIcon from "../../assets/icons/play.svg";
 
 const HomeScreen = ({ onNavigateToList, onSongPress, onNavigateToSearch }) => {
   const dispatch = useDispatch();
-  const { list: songs, status, error, searchQuery } = useSelector(
-    (state) => state.songs
+
+  const { list: songs, status } = useSelector((state) => state.songs);
+  const { list: albums, status: albumsStatus } = useSelector(
+    (state) => state.albums
   );
-  const {
-    list: albums,
-    status: albumsStatus,
-    error: albumsError,
-  } = useSelector((state) => state.albums);
 
-  const [displayName, setDisplayName] = useState("Vini");
+  const [displayName, setDisplayName] = useState("User");
 
-  // Lấy tên hiển thị từ Supabase Auth
+  /* ================= USER INFO ================= */
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (user?.user_metadata?.display_name) {
         setDisplayName(user.user_metadata.display_name);
       } else if (user?.email) {
@@ -44,70 +43,38 @@ const HomeScreen = ({ onNavigateToList, onSongPress, onNavigateToSearch }) => {
     getUser();
   }, []);
 
-  // LOAD SONGS VÀ ALBUMS KHI VÀO TRANG
+  /* ================= LOAD DATA ================= */
   useEffect(() => {
     dispatch(fetchSongs());
     dispatch(fetchAlbums());
   }, []);
 
-  // Helper: bỏ dấu + lowercase để tìm kiếm dễ hơn
-  const normalizeText = (text) =>
-    (text || "")
-      .toString()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-
-  // Map albumId -> album để dễ tra cứu title
+  /* ================= MAP ALBUM ================= */
   const albumMap = useMemo(() => {
     const map = {};
-    (albums || []).forEach((album) => {
-      if (album?.id) {
-        map[album.id] = album;
-      }
+    (albums || []).forEach((a) => {
+      if (a?.id) map[a.id] = a;
     });
     return map;
   }, [albums]);
 
-  // Lọc bài hát theo searchQuery (theo tên bài, nghệ sĩ, thể loại, album)
-  const normalizedQuery = normalizeText(searchQuery || "").trim();
-
-  const filteredSongs =
-    !normalizedQuery
-      ? songs
-      : songs.filter((song) => {
-          const title = normalizeText(song.title || song.name);
-          const artist = normalizeText(song.artistName || song.artist);
-          const genre = normalizeText(song.genreName || song.category);
-          const albumTitle = normalizeText(
-            (albumMap[song.albumId] && albumMap[song.albumId].title) || ""
-          );
-
-          return (
-            title.includes(normalizedQuery) ||
-            artist.includes(normalizedQuery) ||
-            genre.includes(normalizedQuery) ||
-            albumTitle.includes(normalizedQuery)
-          );
-        });
-
-  // convert durationMs → 2:30
+  /* ================= FORMAT TIME ================= */
   const formatTime = (ms) => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds < 10 ? "0" + seconds : seconds}`;
+    if (!ms) return "0:00";
+    const total = Math.floor(ms / 1000);
+    const min = Math.floor(total / 60);
+    const sec = total % 60;
+    return `${min}:${sec < 10 ? "0" + sec : sec}`;
   };
 
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        
         {/* HEADER */}
         <Text style={styles.helloText}>Xin chào {displayName},</Text>
         <Text style={styles.subText}>Hôm nay bạn muốn nghe gì?</Text>
 
-        {/* SEARCH (chạm vào → sang trang Search) */}
+        {/* SEARCH */}
         <TouchableOpacity
           style={styles.searchContainer}
           activeOpacity={0.9}
@@ -115,23 +82,11 @@ const HomeScreen = ({ onNavigateToList, onSongPress, onNavigateToSearch }) => {
         >
           <SearchIcon width={20} height={20} fill="#777" />
           <Text style={[styles.searchInput, { color: "#777" }]}>
-            Tìm kiếm bài hát, nghệ sĩ...
+            Tìm kiếm bài hát, nghệ sĩ, album...
           </Text>
         </TouchableOpacity>
 
-        {/* TAB */}
-        <View style={styles.tabRow}>
-          <View style={styles.tabItem}>
-            <Text style={[styles.tabText, styles.tabActive]}>Gợi ý</Text>
-            <View style={styles.tabUnderline} />
-          </View>
-
-          <Text style={styles.tabText}>Thịnh hành</Text>
-          <Text style={styles.tabText}>Làm đẹp</Text>
-          <Text style={styles.tabText}>Kinh doanh</Text>
-        </View>
-
-        {/* ALBUMS CARDS */}
+        {/* ALBUMS */}
         {albumsStatus === "loading" && (
           <ActivityIndicator
             size="small"
@@ -139,31 +94,34 @@ const HomeScreen = ({ onNavigateToList, onSongPress, onNavigateToSearch }) => {
             style={{ marginBottom: 25 }}
           />
         )}
-        
+
         {albumsStatus === "success" && albums.length > 0 && (
           <View style={styles.cardRow}>
-            {albums.slice(0, 2).map((album) => (
-              <View key={album.id} style={styles.card}>
+            {albums.slice(0, 6).map((album, index) => (
+              <View
+                key={album?.id || `album-${index}`}
+                style={styles.card}
+              >
                 <Image
-                  source={album.coverUrl ? { uri: album.coverUrl } : require("../../assets/image/bgrLogin.jpg")}
+                  source={
+                    album.cover_url
+                      ? { uri: album.cover_url }
+                      : require("../../assets/image/bgrLogin.jpg")
+                  }
                   style={styles.cardImage}
                 />
                 <Text style={styles.cardTitle} numberOfLines={1}>
                   {album.title || "Không có tiêu đề"}
                 </Text>
                 <Text style={styles.cardSubtitle} numberOfLines={1}>
-                  {album.genres && album.genres.length > 0 ? album.genres[0] : "Không rõ thể loại"}
+                  {album.artist_id || "Nhiều nghệ sĩ"}
                 </Text>
               </View>
             ))}
           </View>
         )}
 
-        {albumsStatus === "failed" && (
-          <Text style={styles.errorText}>Không thể tải albums</Text>
-        )}
-
-        {/* RECENT */}
+        {/* RECENT HEADER */}
         <View style={styles.recentHeaderRow}>
           <Text style={styles.recentHeader}>Phát gần đây</Text>
           <TouchableOpacity onPress={onNavigateToList}>
@@ -171,7 +129,7 @@ const HomeScreen = ({ onNavigateToList, onSongPress, onNavigateToSearch }) => {
           </TouchableOpacity>
         </View>
 
-        {/* LOADING */}
+        {/* SONGS LOADING */}
         {status === "loading" && (
           <ActivityIndicator
             size="large"
@@ -180,70 +138,49 @@ const HomeScreen = ({ onNavigateToList, onSongPress, onNavigateToSearch }) => {
           />
         )}
 
-        {/* ERROR MESSAGE */}
-        {status === "failed" && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>
-               Không thể tải dữ liệu
-            </Text>
-            <Text style={styles.errorDetail}>{error}</Text>
-            <TouchableOpacity
-              style={styles.retryButton}
-              onPress={() => dispatch(fetchSongs())}
-            >
-              <Text style={styles.retryText}>Thử lại</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* EMPTY STATE */}
-        {status === "success" && songs.length === 0 && (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Chưa có bài hát nào</Text>
-          </View>
-        )}
-
         {/* SONG LIST */}
-        {status === "success" && filteredSongs.length > 0 && filteredSongs.map((song) => (
-          <TouchableOpacity
-            key={song.id}
-            onPress={() => onSongPress && onSongPress(song)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.recentItem}>
-              {/* IMAGE */}
-              <Image
-                source={song.imageUrl ? { uri: song.imageUrl } : require("../../assets/image/bgrLogin.jpg")}
-                style={styles.recentImage}
-              />
+        {status === "success" &&
+          songs.map((song, index) => (
+            <TouchableOpacity
+              key={song?.id || `song-${index}`}
+              onPress={() => onSongPress && onSongPress(song)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.recentItem}>
+                <Image
+                  source={
+                    song.imageUrl
+                      ? { uri: song.imageUrl }
+                      : require("../../assets/image/bgrLogin.jpg")
+                  }
+                  style={styles.recentImage}
+                />
 
-              {/* INFO */}
-              <View style={{ flex: 1 }}>
-                <Text style={styles.recentTitle}>{song.title || "Không có tiêu đề"}</Text>
-
-                <Text style={styles.recentArtist}>
-                  {song.genreName || song.artistName || "Không rõ thể loại"}
-                </Text>
-
-                <Text style={styles.recentTime}>
-                  {song.durationMs ? formatTime(song.durationMs) : "0:00"}
-                </Text>
-              </View>
-
-              {/* PLAY BUTTON */}
-              <TouchableOpacity
-                onPress={(e) => {
-                  e.stopPropagation();
-                  onSongPress && onSongPress(song);
-                }}
-              >
-                <View style={styles.playButton}>
-                  <PlayIcon width={32} height={32} fill="#fff" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.recentTitle}>
+                    {song.title || "Không có tiêu đề"}
+                  </Text>
+                  <Text style={styles.recentArtist}>
+                    {song.artist_id || "Không rõ nghệ sĩ"}
+                  </Text>
+                  <Text style={styles.recentTime}>
+                    {formatTime(song.durationMs)}
+                  </Text>
                 </View>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        ))}
+
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    onSongPress && onSongPress(song);
+                  }}
+                >
+                  <View style={styles.playButton}>
+                    <PlayIcon width={32} height={32} fill="#fff" />
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          ))}
       </ScrollView>
     </View>
   );
@@ -251,6 +188,7 @@ const HomeScreen = ({ onNavigateToList, onSongPress, onNavigateToSearch }) => {
 
 export default HomeScreen;
 
+/* ================= STYLE ================= */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -260,6 +198,7 @@ const styles = StyleSheet.create({
   },
   helloText: { color: "#fff", fontSize: 22, fontWeight: "700" },
   subText: { color: "#999", fontSize: 14, marginBottom: 20 },
+
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -269,18 +208,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 22,
   },
-  searchInput: { color: "#fff", marginLeft: 10, flex: 1 },
-  tabRow: { flexDirection: "row", marginBottom: 20, gap: 25 },
-  tabItem: { alignItems: "center" },
-  tabText: { color: "#777", fontSize: 14 },
-  tabActive: { color: "#24F7BC", fontWeight: "600" },
-  tabUnderline: {
-    height: 3,
-    width: 25,
-    backgroundColor: "#24F7BC",
-    borderRadius: 10,
-    marginTop: 4,
-  },
+  searchInput: { marginLeft: 10, flex: 1 },
+
   cardRow: { flexDirection: "row", gap: 15, marginBottom: 25 },
   card: {
     backgroundColor: "#1C1F26",
@@ -288,9 +217,15 @@ const styles = StyleSheet.create({
     padding: 10,
     width: 150,
   },
-  cardImage: { width: "100%", height: 100, borderRadius: 12, marginBottom: 12 },
+  cardImage: {
+    width: "100%",
+    height: 100,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
   cardTitle: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  cardSubtitle: { color: "#bbb", fontSize: 12, marginTop: 3 },
+  cardSubtitle: { color: "#bbb", fontSize: 12 },
+
   recentHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -298,6 +233,7 @@ const styles = StyleSheet.create({
   },
   recentHeader: { color: "#fff", fontSize: 18, fontWeight: "700" },
   seeAll: { color: "#24F7BC", fontSize: 14 },
+
   recentItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -308,8 +244,9 @@ const styles = StyleSheet.create({
   },
   recentImage: { width: 60, height: 60, borderRadius: 10, marginRight: 15 },
   recentTitle: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  recentArtist: { color: "#aaa", fontSize: 12, marginTop: 3 },
+  recentArtist: { color: "#aaa", fontSize: 12 },
   recentTime: { color: "#ccc", fontSize: 12, marginTop: 2 },
+
   playButton: {
     width: 48,
     height: 48,
@@ -317,43 +254,5 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
-  },
-  errorContainer: {
-    marginTop: 20,
-    padding: 20,
-    backgroundColor: "#1C1F26",
-    borderRadius: 15,
-    alignItems: "center",
-  },
-  errorText: {
-    color: "#ff4444",
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  errorDetail: {
-    color: "#aaa",
-    fontSize: 12,
-    marginBottom: 15,
-    textAlign: "center",
-  },
-  retryButton: {
-    backgroundColor: "#24F7BC",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryText: {
-    color: "#000",
-    fontWeight: "600",
-  },
-  emptyContainer: {
-    marginTop: 20,
-    padding: 20,
-    alignItems: "center",
-  },
-  emptyText: {
-    color: "#777",
-    fontSize: 14,
   },
 });

@@ -1,5 +1,6 @@
 const supabase = require("../config/supabase");
 
+
 module.exports = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization || req.headers.Authorization;

@@ -1,16 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const auth = require("../middleware/auth");
 const controller = require("../controllers/albumController");
 
-// PUBLIC
-router.get("/", controller.getAll);
-router.get("/:id", controller.getById);
-
-// PRIVATE (có token Firebase)
-router.post("/", auth, controller.create);
-router.put("/:id", auth, controller.update);
-router.delete("/:id", auth, controller.delete);
+router.get("/", controller.getAllAlbums);
+router.get("/:id", controller.getAlbumById);
+router.post("/", controller.createAlbum);
+router.put("/:id", controller.updateAlbum);
+router.delete("/:id", controller.deleteAlbum);
 
 module.exports = router;
-

@@ -203,7 +203,7 @@ const RegisterScreen = ({ onNavigateToLogin, onRegisterSuccess }) => {
             <View style={styles.line} />
           </View>
 
-          <GoogleButton title="Đăng ký với Google" onPress={() => {}} />
+          {/* <GoogleButton title="Đăng ký với Google" onPress={() => {}} /> */}
 
           {/* FOOTER */}
           <View style={styles.footerRow}>

@@ -9,18 +9,26 @@ import {
 } from "react-native";
 import supabase from "../../supabaseClient";
 
-const ProfileScreen = () => {
+const ProfileScreen = ({ onNavigateToAdmin }) => {
   const [displayName, setDisplayName] = useState("Người dùng");
   const [email, setEmail] = useState("Chưa cập nhật");
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (user) {
-        setDisplayName(user.user_metadata?.display_name || user.email?.split("@")[0] || "Người dùng");
+        setDisplayName(
+          user.user_metadata?.display_name ||
+            user.email?.split("@")[0] ||
+            "Người dùng"
+        );
         setEmail(user.email || "Chưa cập nhật");
       }
     };
+
     getUser();
   }, []);
 
@@ -85,6 +93,20 @@ const ProfileScreen = () => {
           <Text style={styles.rowLabel}>Audio Quality</Text>
           <Text style={styles.rowArrow}>›</Text>
         </TouchableOpacity>
+
+        {/* ===== ADMIN BUTTON (CHỈ THÊM DÒNG NÀY) ===== */}
+        <TouchableOpacity
+          style={styles.row}
+          onPress={onNavigateToAdmin}
+        >
+          <Text style={[styles.rowLabel, { color: "#24F7BC" }]}>
+            Admin Panel
+          </Text>
+          <Text style={[styles.rowArrow, { color: "#24F7BC" }]}>
+            ›
+          </Text>
+        </TouchableOpacity>
+        {/* ========================================= */}
       </ScrollView>
     </View>
   );
@@ -152,5 +174,4 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
 });
-
 
