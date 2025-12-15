@@ -19,14 +19,14 @@ const ListScreen = ({ onBack, onSongPress }) => {
   const dispatch = useDispatch();
   const { list: songs, status, error } = useSelector((state) => state.songs);
 
-  // LOAD SONGS KHI VÀO TRANG (nếu chưa có)
+  // LOAD SONGS
   useEffect(() => {
     if (songs.length === 0 || status === "idle") {
       dispatch(fetchSongs());
     }
   }, []);
 
-  // convert durationMs → 2:30
+  // convert duration_ms → 2:30
   const formatTime = (ms) => {
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
@@ -81,12 +81,11 @@ const ListScreen = ({ onBack, onSongPress }) => {
           </View>
         )}
 
-        {/* Song List */}
+        {/* SONG LIST */}
         {status === "success" && songs.length > 0 && (
           <View style={{ marginTop: 25 }}>
-            {songs.map((song, index) => {
-              // Có thể thêm logic để xác định bài hát đang phát
-              const isActive = false; // Tạm thời để false, có thể update sau
+            {songs.map((song) => {
+              const isActive = false;
 
               return (
                 <TouchableOpacity
@@ -122,13 +121,15 @@ const ListScreen = ({ onBack, onSongPress }) => {
                         {song.title || "Không có tiêu đề"}
                       </Text>
 
+                      {/* Artist / Genre (hiện tạm ID cho đến khi JOIN API) */}
                       <Text style={styles.songArtist} numberOfLines={1}>
-                        {song.genreName || song.artistName || "Không rõ thể loại"}
+                        {song.genre_id || song.artist_id || "Không rõ thể loại"}
                       </Text>
 
-                      {song.durationMs && (
+                      {/* Duration */}
+                      {song.duration_ms && (
                         <Text style={styles.songDuration}>
-                          {formatTime(song.durationMs)}
+                          {formatTime(song.duration_ms)}
                         </Text>
                       )}
                     </View>
@@ -155,7 +156,6 @@ const ListScreen = ({ onBack, onSongPress }) => {
             })}
           </View>
         )}
-
       </ScrollView>
     </View>
   );
@@ -199,7 +199,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 
-  /* --- SONG ITEM --- */
   songItem: {
     backgroundColor: "#1C1F26",
     flexDirection: "row",
@@ -217,7 +216,6 @@ const styles = StyleSheet.create({
     borderColor: "#24F7BC33",
   },
 
-  /* SONG IMAGE */
   songImage: {
     width: 55,
     height: 55,
@@ -267,7 +265,6 @@ const styles = StyleSheet.create({
   loadingContainer: {
     marginTop: 50,
     alignItems: "center",
-    justifyContent: "center",
   },
 
   errorContainer: {

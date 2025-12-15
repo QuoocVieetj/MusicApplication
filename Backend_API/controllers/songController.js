@@ -1,79 +1,127 @@
 const supabase = require("../config/supabase");
+const crypto = require("crypto");
 
-exports.getAll = async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("songs")
-      .select("*");
-    
-    if (error) throw error;
-    res.json(data || []);
-  } catch (e) {
-    console.error("Error fetching songs:", e);
-    res.status(500).json({ message: "Error fetching songs", error: e.message });
-  }
-};
+// ================= GET ALL =================
+async function getAllSongs(req, res) {
+  const { data, error } = await supabase
+    .from("songs")
+    .select("*")
+    .order("created_at", { ascending: false });
 
-exports.getById = async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("songs")
-      .select("*")
-      .eq("id", req.params.id)
-      .single();
-    
-    if (error) throw error;
-    res.json(data);
-  } catch (e) {
-    console.error("Error fetching song:", e);
-    res.status(500).json({ message: "Error fetching song", error: e.message });
-  }
-};
+  if (error) return res.status(500).json({ error: error.message });
 
-exports.create = async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("songs")
-      .insert(req.body)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    res.json({ message: "Created", id: data.id, ...data });
-  } catch (e) {
-    console.error("Error creating song:", e);
-    res.status(500).json({ message: "Create failed", error: e.message });
-  }
-};
+  // map snake_case -> camelCase
+  const mapped = data.map((s) => ({
+    ...s,
+    imageUrl: s.image_url,
+    audioUrl: s.audio_url,
+  }));
 
-exports.update = async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("songs")
-      .update(req.body)
-      .eq("id", req.params.id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    res.json({ message: "Updated", ...data });
-  } catch (e) {
-    console.error("Error updating song:", e);
-    res.status(500).json({ message: "Update failed", error: e.message });
-  }
-};
+  res.json(mapped);
+}
 
-exports.delete = async (req, res) => {
-  try {
-    const { error } = await supabase
-      .from("songs")
-      .delete()
-      .eq("id", req.params.id);
-    
-    if (error) throw error;
-    res.json({ message: "Deleted" });
-  } catch (e) {
-    console.error("Error deleting song:", e);
-    res.status(500).json({ message: "Delete failed", error: e.message });
-  }
+// ================= GET BY ID =================
+async function getSongById(req, res) {
+  const { id } = req.params;
+
+  const { data, error } = await supabase
+    .from("songs")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) return res.status(404).json({ error: error.message });
+
+  res.json({
+    ...data,
+    imageUrl: data.image_url,
+    audioUrl: data.audio_url,
+  });
+}
+
+// ================= CREATE =================
+async function createSong(req, res) {
+  const {
+    title,
+    imageUrl,
+    audioUrl,
+    artistId,
+    albumId,
+    genreId,
+    durationMs,
+    lyricsPlain,
+    lyricsSynced,
+  } = req.body;
+
+  const { data, error } = await supabase
+    .from("songs")
+    .insert([
+      {
+        id: crypto.randomUUID(),
+        title,
+        image_url: imageUrl,
+        audio_url: audioUrl,
+        artist_id: artistId || null,
+        album_id: albumId || null,
+        genre_id: genreId || null,
+        duration_ms: durationMs || null,
+        lyrics_plain: lyricsPlain || null,
+        lyrics_synced: lyricsSynced || null,
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) return res.status(400).json({ error: error.message });
+  res.status(201).json(data);
+}
+
+// ================= UPDATE =================
+async function updateSong(req, res) {
+  const { id } = req.params;
+  const {
+    title,
+    imageUrl,
+    audioUrl,
+    artistId,
+    albumId,
+    genreId,
+    durationMs,
+  } = req.body;
+
+  const { data, error } = await supabase
+    .from("songs")
+    .update({
+      title,
+      image_url: imageUrl,
+      audio_url: audioUrl,
+      artist_id: artistId,
+      album_id: albumId,
+      genre_id: genreId,
+      duration_ms: durationMs,
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) return res.status(400).json({ error: error.message });
+  res.json(data);
+}
+
+// ================= DELETE =================
+async function deleteSong(req, res) {
+  const { id } = req.params;
+
+  const { error } = await supabase.from("songs").delete().eq("id", id);
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json({ message: "Deleted", id });
+}
+
+module.exports = {
+  getAllSongs,
+  getSongById,
+  createSong,
+  updateSong,
+  deleteSong,
 };

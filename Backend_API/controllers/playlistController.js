@@ -1,66 +1,44 @@
-const supabase = require("../config/supabase");
+const supabase = require('../config/supabase');
 
-exports.getAll = async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("playlists")
-      .select("*");
-    
-    if (error) throw error;
-    res.json(data || []);
-  } catch (e) {
-    console.error("Error fetching playlists:", e);
-    res.status(500).json({ message: "Error", error: e.message });
-  }
-};
+async function getAllPlaylists(req, res) {
+  const { data, error } = await supabase.from('playlists').select('*');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+}
 
-exports.create = async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("playlists")
-      .insert({
-        ...req.body,
-        createdAt: new Date().toISOString()
-      })
-      .select()
-      .single();
-    
-    if (error) throw error;
-    res.json({ id: data.id, ...data });
-  } catch (e) {
-    console.error("Error creating playlist:", e);
-    res.status(500).json({ message: "Error", error: e.message });
-  }
-};
+async function getPlaylistById(req, res) {
+  const { id } = req.params;
+  const { data, error } = await supabase.from('playlists').select('*').eq('id', id).single();
+  if (error) return res.status(404).json({ error: error.message });
+  res.json(data);
+}
 
-exports.update = async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("playlists")
-      .update(req.body)
-      .eq("id", req.params.id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    res.json({ message: "Updated", ...data });
-  } catch (e) {
-    console.error("Error updating playlist:", e);
-    res.status(500).json({ message: "Error", error: e.message });
-  }
-};
+async function createPlaylist(req, res) {
+  const playlist = req.body;
+  const { data, error } = await supabase.from('playlists').insert([playlist]);
+  if (error) return res.status(400).json({ error: error.message });
+  res.status(201).json(data[0]);
+}
 
-exports.delete = async (req, res) => {
-  try {
-    const { error } = await supabase
-      .from("playlists")
-      .delete()
-      .eq("id", req.params.id);
-    
-    if (error) throw error;
-    res.json({ message: "Deleted" });
-  } catch (e) {
-    console.error("Error deleting playlist:", e);
-    res.status(500).json({ message: "Error", error: e.message });
-  }
+async function updatePlaylist(req, res) {
+  const { id } = req.params;
+  const updates = req.body;
+  const { data, error } = await supabase.from('playlists').update(updates).eq('id', id).select();
+  if (error) return res.status(400).json({ error: error.message });
+  res.json(data[0]);
+}
+
+async function deletePlaylist(req, res) {
+  const { id } = req.params;
+  const { data, error } = await supabase.from('playlists').delete().eq('id', id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: 'Playlist deleted', data });
+}
+
+module.exports = {
+  getAllPlaylists,
+  getPlaylistById,
+  createPlaylist,
+  updatePlaylist,
+  deletePlaylist
 };

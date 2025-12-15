@@ -9,20 +9,44 @@ import {
   Dimensions,
 } from "react-native";
 import { Audio } from "expo-av";
-import { useSelector } from "react-redux";
-
+import { useDispatch, useSelector } from "react-redux";
 import PlayIcon from "../../assets/icons/play.svg";
 import HeartIcon from "../../assets/icons/heart.svg";
 import NextIcon from "../../assets/icons/next.svg";
 import PrevIcon from "../../assets/icons/prev.svg";
+import { toggleFavoriteThunk } from "../../redux/slice/favoritesSlice";
+import { goToFavoriteTab } from "../../redux/slice/uiSlice";
 
 const { width, height } = Dimensions.get("window");
 
 // Pause Icon Component
 const PauseIcon = ({ width, height, fill }) => (
-  <View style={{ width, height, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6 }}>
-    <View style={{ width: 4, height: height * 0.6, backgroundColor: fill, borderRadius: 2 }} />
-    <View style={{ width: 4, height: height * 0.6, backgroundColor: fill, borderRadius: 2 }} />
+  <View
+    style={{
+      width,
+      height,
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      gap: 6,
+    }}
+  >
+    <View
+      style={{
+        width: 4,
+        height: height * 0.6,
+        backgroundColor: fill,
+        borderRadius: 2,
+      }}
+    />
+    <View
+      style={{
+        width: 4,
+        height: height * 0.6,
+        backgroundColor: fill,
+        borderRadius: 2,
+      }}
+    />
   </View>
 );
 
@@ -34,6 +58,10 @@ const DetailSong = ({ onBack, song, onChangeSong }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const songs = useSelector((state) => state.songs.list || []);
+  const dispatch = useDispatch();
+  const favorites = useSelector((state) => state.favorites.list || []);
+
+  const isFavorite = favorites.some((s) => s.id === song?.id);
 
   // Format time từ milliseconds
   const formatTime = (ms) => {
@@ -89,7 +117,7 @@ const DetailSong = ({ onBack, song, onChangeSong }) => {
             setCurrentTime(status.positionMillis || 0);
             setIsPlaying(status.isPlaying);
             setDuration(status.durationMillis || status.durationMillis || 0);
-            
+
             // Tự động dừng khi hết bài
             if (status.didJustFinish) {
               setIsPlaying(false);
@@ -187,11 +215,18 @@ const DetailSong = ({ onBack, song, onChangeSong }) => {
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Playing Now</Text>
-          <HeartIcon width={26} height={26} fill="#24F7BC" />
+<TouchableOpacity onPress={() => dispatch(goToFavoriteTab())}>
+  <HeartIcon width={26} height={26} fill="#24F7BC" />
+</TouchableOpacity>
         </View>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
           <Text style={{ color: "#fff" }}>Không có thông tin bài hát</Text>
-          <TouchableOpacity onPress={onBack} style={{ marginTop: 20, padding: 10 }}>
+          <TouchableOpacity
+            onPress={onBack}
+            style={{ marginTop: 20, padding: 10 }}
+          >
             <Text style={{ color: "#24F7BC" }}>Quay lại</Text>
           </TouchableOpacity>
         </View>
@@ -201,7 +236,6 @@ const DetailSong = ({ onBack, song, onChangeSong }) => {
 
   return (
     <View style={styles.container}>
-
       {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack}>
@@ -210,7 +244,18 @@ const DetailSong = ({ onBack, song, onChangeSong }) => {
 
         <Text style={styles.headerTitle}>Playing Now</Text>
 
-        <HeartIcon width={26} height={26} fill="#24F7BC" />
+<TouchableOpacity
+  onPress={() => {
+    dispatch(toggleFavoriteThunk(song));
+    dispatch(goToFavoriteTab());
+  }}
+>
+  <HeartIcon
+    width={26}
+    height={26}
+    fill={isFavorite ? "#24F7BC" : "#ffffff"}
+  />
+</TouchableOpacity>
       </View>
 
       {/* SWIPER */}
@@ -226,7 +271,6 @@ const DetailSong = ({ onBack, song, onChangeSong }) => {
         scrollEventThrottle={16}
         style={{ flexGrow: 0 }}
       >
-
         {/* IMAGE PAGE */}
         <View style={styles.page}>
           <View style={styles.imageWrapper}>
@@ -249,7 +293,6 @@ const DetailSong = ({ onBack, song, onChangeSong }) => {
             </ScrollView>
           </View>
         </View>
-
       </ScrollView>
 
       {/* DOTS */}
@@ -308,7 +351,6 @@ const DetailSong = ({ onBack, song, onChangeSong }) => {
           <NextIcon width={30} height={30} fill="#fff" />
         </TouchableOpacity>
       </View>
-
     </View>
   );
 };

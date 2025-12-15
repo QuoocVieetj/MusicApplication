@@ -2,47 +2,64 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { API_BASE_URL } from "../../config/apiConfig";
 
 const initialState = {
-    list: [],
-    status: "idle",
-    error: null,
+  list: [],
+  status: "idle",
+  error: null,
 };
 
-// GET LIST ALBUMS
-export const fetchAlbums = createAsyncThunk(
-    "albums/fetch",
-    async () => {
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/albums`);
-            if (!res.ok) {
-                throw new Error(`Fetch albums failed: ${res.status}`);
-            }
-            const data = await res.json();
-            return data;
-        } catch (error) {
-            throw error;
-        }
-    }
-);
-
-export const albumSlice = createSlice({
-    name: "albums",
-    initialState,
-    reducers: {},
-    extraReducers: (builder) => {
-        builder
-            .addCase(fetchAlbums.pending, (state) => {
-                state.status = "loading";
-            })
-            .addCase(fetchAlbums.fulfilled, (state, action) => {
-                state.status = "success";
-                state.list = action.payload;
-            })
-            .addCase(fetchAlbums.rejected, (state, action) => {
-                state.status = "failed";
-                state.error = action.error.message;
-            });
-    }
+export const fetchAlbums = createAsyncThunk("albums/fetch", async () => {
+  const res = await fetch(`${API_BASE_URL}/api/albums`);
+  return res.json();
 });
 
-export const albumReducer = albumSlice.reducer;
+export const addAlbum = createAsyncThunk("albums/add", async (album) => {
+  const res = await fetch(`${API_BASE_URL}/api/albums`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(album),
+  });
+  return res.json();
+});
 
+export const updateAlbum = createAsyncThunk(
+  "albums/update",
+  async ({ id, data }) => {
+    const res = await fetch(`${API_BASE_URL}/api/albums/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  }
+);
+
+export const deleteAlbum = createAsyncThunk("albums/delete", async (id) => {
+  await fetch(`${API_BASE_URL}/api/albums/${id}`, { method: "DELETE" });
+  return id;
+});
+
+const albumSlice = createSlice({
+  name: "albums",
+  initialState,
+  reducers: {},
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchAlbums.fulfilled, (state, action) => {
+        state.list = action.payload;
+        state.status = "success";
+      })
+      .addCase(addAlbum.fulfilled, (state, action) => {
+        state.list.unshift(action.payload);
+      })
+      .addCase(updateAlbum.fulfilled, (state, action) => {
+        const i = state.list.findIndex(a => a.id === action.payload.id);
+        if (i !== -1) state.list[i] = action.payload;
+      })
+      .addCase(deleteAlbum.fulfilled, (state, action) => {
+        state.list = state.list.filter(a => a.id !== action.payload);
+      });
+  },
+});
+
+export default albumSlice.reducer;
+export const albumReducer = albumSlice.reducer;
