@@ -1,37 +1,44 @@
+require("dotenv").config();
+
 const express = require("express");
-const bodyParser = require("body-parser");
 const cors = require("cors");
 
 const app = express();
+
+/* ========================
+   GLOBAL MIDDLEWARE
+======================== */
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-// ===== ROUTES =====
-app.use("/api/albums", require("./routes/albums"));
-app.use("/api/artists", require("./routes/artists"));
-app.use("/api/comments", require("./routes/comments"));
-app.use("/api/playlists", require("./routes/playlists"));
-app.use("/api/songs", require("./routes/songs"));
-app.use("/api/users", require("./routes/users"));
+/* ========================
+   ROUTES
+======================== */
+app.use("/api", require("./routes")); // ⬅ dùng index.js
 
-const PORT = 8386;
-
-// Lấy IP address động
-const os = require('os');
-const networkInterfaces = os.networkInterfaces();
-let ipAddress = '192.168.1.48'; // default
-
-for (const interfaceName in networkInterfaces) {
-  for (const iface of networkInterfaces[interfaceName]) {
-    if (iface.family === 'IPv4' && !iface.internal) {
-      ipAddress = iface.address;
-      break;
-    }
-  }
-}
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running at:`);
-  console.log(`   - http://localhost:${PORT}`);
+/* ========================
+   HEALTH CHECK
+======================== */
+app.get("/", (req, res) => {
+  res.json({ status: "OK", message: "API is running 🚀" });
 });
 
+/* ========================
+   ERROR HANDLER
+======================== */
+app.use((err, req, res, next) => {
+  console.error("🔥 Error:", err);
+  res.status(err.status || 500).json({
+    message: err.message || "Internal server error",
+  });
+});
+
+/* ========================
+   START SERVER
+======================== */
+const PORT = process.env.PORT || 8386;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on:`);
+  console.log(`   http://localhost:${PORT}`);
+});

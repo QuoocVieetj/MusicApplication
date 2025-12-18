@@ -1,249 +1,242 @@
-// import_songs.js — FULL VERSION for Supabase Music App
-//node import_songs.js itunes "Hepihepi" 1 
+/**
+ * import_songs.js – FINAL VERSION
+ * Usage:
+ * node import_songs.js "Taylor Swift" 5 "love,folklore" <USER_ID>
+ */
 
-import fs from "fs";
 import axios from "axios";
 import dotenv from "dotenv";
-import supabase from "./config/supabase.esm.js";
+import crypto from "crypto";
+import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
 
-// ======================================================================
-//  Utility
-// ======================================================================
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const normalizeId = (str) =>
-    String(str || "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "_")
-        .replace(/^_+|_+$/g, "");
+/* ======================================================
+   SUPABASE CLIENT (SERVICE ROLE – BYPASS RLS)
+====================================================== */
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+        },
+    }
+);
 
-// ======================================================================
-//  Lyrics Fetch
-// ======================================================================
+/* ======================================================
+   UTILS
+====================================================== */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const genId = (input) =>
+    crypto.createHash("sha1").update(String(input)).digest("hex");
+
+/* ======================================================
+   STORAGE UPLOAD
+====================================================== */
+async function uploadFile(bucket, path, buffer, contentType) {
+    const { error } = await supabase.storage.from(bucket).upload(path, buffer, {
+        contentType,
+        upsert: true,
+    });
+
+    if (error) {
+        console.error(`❌ Upload failed ${bucket}/${path}`, error.message);
+        return null;
+    }
+
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+    return data.publicUrl;
+}
+
+/* ======================================================
+   LYRICS
+====================================================== */
 async function fetchLyrics(artist, title) {
     try {
         const { data } = await axios.get("https://lrclib.net/api/get", {
             params: { artist_name: artist, track_name: title },
         });
-
         return {
-            plain: data.plainLyrics ?? "",
-            synced: data.syncedLyrics ?? "",
+            plain: data.plainLyrics || "",
+            synced: data.syncedLyrics || "",
         };
     } catch {
-        console.log(`⚠ Lyrics not found: ${artist} - ${title}`);
         return { plain: "", synced: "" };
     }
 }
 
-// ======================================================================
-//  Search iTunes API
-// ======================================================================
-async function searchItunes(term, limit = 25) {
+/* ======================================================
+   ITUNES SEARCH
+====================================================== */
+async function searchItunes(term, limit = 5) {
     const { data } = await axios.get("https://itunes.apple.com/search", {
         params: { term, media: "music", entity: "song", limit },
     });
 
     return data.results
         .map((i) => ({
-            source: "itunes",
-            source_id: String(i.trackId),
-            title: i.trackName ?? "",
-            artist: i.artistName ?? "",
-            album: i.collectionName ?? "",
+            title: i.trackName,
+            artist: i.artistName,
+            album: i.collectionName || "Single",
             image_url: (i.artworkUrl100 || "").replace("100x100", "512x512"),
-            audio_url: i.previewUrl || "",
-            duration_ms: i.trackTimeMillis ?? 0,
-            genre: i.primaryGenreName ?? "",
+            audio_url: i.previewUrl,
+            duration_ms: i.trackTimeMillis || 0,
+            genre: i.primaryGenreName || "Unknown",
         }))
-        .filter((s) => !!s.audio_url);
+        .filter((s) => s.audio_url);
 }
 
-// ======================================================================
-//  Upload to Storage
-// ======================================================================
-async function uploadFile(bucket, storagePath, buffer, contentType) {
-    console.log(`⬆ Uploading to ${bucket}/${storagePath} ...`);
-
-    const { error } = await supabase.storage
-        .from(bucket)
-        .upload(storagePath, buffer, {
-            contentType,
-            upsert: true,
-        });
-
-    if (error) {
-        console.error("❌ Upload FAILED:", error.message);
-        return null;
-    }
-
-    return storagePath; // return path only
+/* ======================================================
+   DB UPSERT
+====================================================== */
+async function upsertGenre(name) {
+    const id = genId(name);
+    await supabase.from("genres").upsert({ id, name });
+    return id;
 }
 
-// ======================================================================
-//  Upsert Database
-// ======================================================================
-async function upsertArtist(song) {
-    const id = normalizeId(song.artist);
+async function upsertArtist(name, avatar = null, user_id = null) {
+    const id = genId(name);
     await supabase.from("artists").upsert({
         id,
-        name: song.artist,
-        avatar_path: null,
-        created_at: new Date().toISOString(),
+        name,
+        avatar,
+        user_id,
     });
+    return id;
 }
 
-async function upsertGenre(song) {
-    const id = normalizeId(song.genre);
-    await supabase.from("genres").upsert({
-        id,
-        name: song.genre,
-        created_at: new Date().toISOString(),
-    });
-}
-
-async function upsertAlbum(song, coverPath) {
-    const id = normalizeId(`${song.artist}_${song.album}`);
-
+async function upsertAlbum(title, artistId, coverUrl = null) {
+    const id = genId(`${artistId}|${title}`);
     await supabase.from("albums").upsert({
         id,
-        title: song.album || "Single",
-        artist_id: normalizeId(song.artist),
-        cover_path: coverPath,
-        created_at: new Date().toISOString(),
+        title,
+        artist_id: artistId,
+        cover_url: coverUrl,
     });
+    return id;
 }
 
-async function upsertSong(song, lyrics, audioPath, coverPath) {
-    const id = `${song.source}_${song.source_id}`;
+async function upsertSong(song, ids, urls, lyrics, uploadedBy) {
+    const id = genId(`${ids.artist}|${song.title}|${ids.album}`);
 
-    await supabase.from("songs").upsert({
+    const { error } = await supabase.from("songs").upsert({
         id,
         title: song.title,
-        artist_id: normalizeId(song.artist),
-        album_id: normalizeId(`${song.artist}_${song.album}`),
-        genre_id: normalizeId(song.genre),
-        audio_path: audioPath,
-        cover_path: coverPath,
+        artist_id: ids.artist,
+        album_id: ids.album,
+        genre_id: ids.genre,
+        uploaded_by: uploadedBy,
+        image_url: urls.cover,
+        audio_url: urls.audio,
         duration_ms: song.duration_ms,
         lyrics_plain: lyrics.plain,
         lyrics_synced: lyrics.synced,
-        play_count: 0,
-        likes: 0,
-        created_at: new Date().toISOString(),
     });
+
+    if (error) console.error("❌ Song insert error:", error.message);
 }
 
-// ======================================================================
-//  Demo User + Playlist
-// ======================================================================
-async function createDemoUser() {
-    await supabase.from("users").upsert({
-        id: "demo_user",
-        name: "Demo User",
-        avatar: "",
-        liked_songs: [],
-        recently_played: [],
-        following_artists: [],
-        created_at: new Date().toISOString(),
-    });
-}
-
-async function createDemoPlaylist(songIds) {
-    await supabase.from("playlists").upsert({
-        id: "demo_playlist",
-        title: "Imported Playlist",
-        owner_id: "demo_user",
-        song_ids: songIds.slice(0, 100),
-        created_at: new Date().toISOString(),
-    });
-}
-
-// ======================================================================
-//  Import Many Songs
-// ======================================================================
-async function importMany(songs) {
-    console.log(`⏳ Importing ${songs.length} songs...\n`);
-    const importedIds = [];
+/* ======================================================
+   IMPORT LOGIC
+====================================================== */
+async function importSongs(songs, uploadedBy, keywords = []) {
+    console.log(`⏳ Importing ${songs.length} song(s)...`);
 
     for (const s of songs) {
+        const text = `${s.title} ${s.artist} ${s.album} ${s.genre}`.toLowerCase();
+        if (keywords.length && !keywords.some((k) => text.includes(k))) continue;
+
         console.log(`🎵 ${s.artist} - ${s.title}`);
 
         try {
             const lyrics = await fetchLyrics(s.artist, s.title);
             await sleep(150);
 
-            // -------------------------
-            // Upload cover
-            // -------------------------
-            let coverPath = null;
-            try {
+            /* Upload cover */
+            let coverUrl = null;
+            if (s.image_url) {
                 const coverBuf = (
                     await axios.get(s.image_url, { responseType: "arraybuffer" })
                 ).data;
 
-                coverPath = `covers/${normalizeId(s.artist)}_${Date.now()}.jpg`;
-                await uploadFile("covers", coverPath, coverBuf, "image/jpeg");
-            } catch {
-                console.log("⚠ Cover upload failed");
+                coverUrl = await uploadFile(
+                    "covers",
+                    `covers/${genId(s.artist)}_${Date.now()}.jpg`,
+                    coverBuf,
+                    "image/jpeg"
+                );
             }
 
-            // -------------------------
-            // Upload audio
-            // -------------------------
-            let audioPath = null;
-            try {
-                const audioBuf = (
-                    await axios.get(s.audio_url, { responseType: "arraybuffer" })
-                ).data;
+            /* Upload audio */
+            const audioBuf = (
+                await axios.get(s.audio_url, { responseType: "arraybuffer" })
+            ).data;
 
-                audioPath = `songs/${normalizeId(s.title)}_${Date.now()}.mp3`;
-                await uploadFile("songs", audioPath, audioBuf, "audio/mpeg");
-            } catch {
-                console.log("⚠ Audio upload failed");
+            const audioUrl = await uploadFile(
+                "songs",
+                `songs/${genId(s.artist + s.title)}_${Date.now()}.mp3`,
+                audioBuf,
+                "audio/mpeg"
+            );
+
+            if (!audioUrl) {
+                console.warn("⚠️ Skip song (audio upload failed)");
+                continue;
             }
 
-            // -------------------------
-            // Upsert DB
-            // -------------------------
-            await upsertArtist(s);
-            await upsertGenre(s);
-            await upsertAlbum(s, coverPath);
-            await upsertSong(s, lyrics, audioPath, coverPath);
+            /* DB */
+            const genreId = await upsertGenre(s.genre);
+            const artistId = await upsertArtist(s.artist, coverUrl);
+            const albumId = await upsertAlbum(s.album, artistId, coverUrl);
 
-            importedIds.push(`${s.source}_${s.source_id}`);
+            await upsertSong(
+                s,
+                { genre: genreId, artist: artistId, album: albumId },
+                { cover: coverUrl, audio: audioUrl },
+                lyrics,
+                uploadedBy
+            );
+
+            await sleep(100);
         } catch (err) {
-            console.log(`❌ ERROR importing: ${err.message}`);
+            console.error("❌ Import error:", err.message);
         }
     }
 
-    await createDemoUser();
-    await createDemoPlaylist(importedIds);
-
-    console.log("\n🎉 DONE! All songs imported successfully.");
+    console.log("🎉 IMPORT DONE");
 }
 
-// ======================================================================
-//  Run Script
-// ======================================================================
+/* ======================================================
+   RUN
+====================================================== */
 (async () => {
     try {
-        const provider = (process.argv[2] || "itunes").toLowerCase();
-        const term = process.argv[3] || "lofi";
-        const limit = parseInt(process.argv[4] || "20", 10);
+        const term = process.argv[2] || "lofi";
+        const limit = parseInt(process.argv[3] || "5", 10);
+        const uploadedBy = process.argv[4] || null;
+        const keywords =
+            (process.argv[5] || term)
+                .split(",")
+                .map((k) => k.trim().toLowerCase()) || [];
 
-        console.log(`Provider: ${provider}`);
-        console.log(`Search term: "${term}"`);
-        console.log(`Limit: ${limit}\n`);
+        console.log(`🔍 Search: "${term}" | Limit: ${limit}`);
+        console.log(`🔑 Keywords: ${keywords.join(", ")}`);
+        console.log(`👤 Uploaded by: ${uploadedBy}\n`);
 
         const songs = await searchItunes(term, limit);
-        console.log(`Fetched ${songs.length} tracks from iTunes.\n`);
+        if (!songs.length) {
+            console.log("❌ No songs found");
+            process.exit(0);
+        }
 
-        await importMany(songs);
+        await importSongs(songs, uploadedBy, keywords);
         process.exit(0);
     } catch (err) {
-        console.error("❌ FATAL ERROR:", err);
+        console.error("🔥 FATAL ERROR:", err);
         process.exit(1);
     }
 })();
