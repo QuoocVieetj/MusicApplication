@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -13,7 +13,8 @@ import {
 } from "react-native";
 
 import { LinearGradient } from "expo-linear-gradient";
-import supabase from "../../supabaseClient";
+import { useDispatch, useSelector } from "react-redux";
+import { login, clearError } from "../../redux/slice/authSlice";
 
 const bgImage = require("../../assets/image/bgrLogin.jpg");
 
@@ -73,41 +74,36 @@ const LoginScreen = ({ onNavigateToRegister, onLoginSuccess }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [loading, setLoading] = useState(false);
+  
+  const dispatch = useDispatch();
+  const { loading, error, user } = useSelector((state) => state.auth);
 
-  const loginUser = async () => {
+  useEffect(() => {
+    if (user) {
+      Alert.alert("Thành công", "Đăng nhập thành công!");
+      onLoginSuccess && onLoginSuccess();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (error) {
+      if (error.includes("Invalid login credentials")) {
+        Alert.alert("Lỗi", "Email hoặc mật khẩu không đúng");
+      } else if (error.includes("Email not confirmed")) {
+        Alert.alert("Lỗi", "Vui lòng xác nhận email của bạn");
+      } else {
+        Alert.alert("Lỗi", error || "Đăng nhập thất bại");
+      }
+      dispatch(clearError());
+    }
+  }, [error]);
+
+  const loginUser = () => {
     if (!email || !password) {
       Alert.alert("Lỗi", "Vui lòng nhập email và mật khẩu");
       return;
     }
-
-    try {
-      setLoading(true);
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
-      });
-
-      if (error) {
-        if (error.message.includes("Invalid login credentials")) {
-          Alert.alert("Lỗi", "Email hoặc mật khẩu không đúng");
-        } else if (error.message.includes("Email not confirmed")) {
-          Alert.alert("Lỗi", "Vui lòng xác nhận email của bạn");
-        } else {
-          Alert.alert("Lỗi", error.message || "Đăng nhập thất bại");
-        }
-        return;
-      }
-
-      Alert.alert("Thành công", "Đăng nhập thành công!");
-      onLoginSuccess && onLoginSuccess();
-
-    } catch (error) {
-      Alert.alert("Lỗi", error.message || "Đăng nhập thất bại");
-    } finally {
-      setLoading(false);
-    }
+    dispatch(login({ email, password }));
   };
 
   return (

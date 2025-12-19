@@ -11,6 +11,7 @@ import {
 
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSongs } from "../../redux/slice/songSlice";
+import { clearSelectedAlbum } from "../../redux/slice/albumSlice";
 
 import PlayIcon from "../../assets/icons/play.svg";
 import ListIcon from "../../assets/icons/list.svg";
@@ -18,6 +19,15 @@ import ListIcon from "../../assets/icons/list.svg";
 const ListScreen = ({ onBack, onSongPress }) => {
   const dispatch = useDispatch();
   const { list: songs, status, error } = useSelector((state) => state.songs);
+  const { selectedAlbum } = useSelector((state) => state.albums);
+
+  // Lọc danh sách bài hát nếu có album được chọn
+  const displaySongs = React.useMemo(() => {
+    if (selectedAlbum) {
+      return songs.filter((s) => s.album_id === selectedAlbum.id);
+    }
+    return songs;
+  }, [selectedAlbum, songs]);
 
   // LOAD SONGS
   useEffect(() => {
@@ -25,6 +35,11 @@ const ListScreen = ({ onBack, onSongPress }) => {
       dispatch(fetchSongs());
     }
   }, []);
+
+  const handleBack = () => {
+    dispatch(clearSelectedAlbum()); // Reset album khi quay lại
+    onBack && onBack();
+  };
 
   // convert duration_ms → 2:30
   const formatTime = (ms) => {
@@ -40,7 +55,7 @@ const ListScreen = ({ onBack, onSongPress }) => {
 
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
 
@@ -52,6 +67,24 @@ const ListScreen = ({ onBack, onSongPress }) => {
             <Text style={styles.moreIcon}>⋯</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Album Header Info (Nếu đang xem theo album) */}
+        {selectedAlbum && (
+          <View style={styles.albumHeaderContainer}>
+            <Image
+              source={
+                selectedAlbum.cover_url
+                  ? { uri: selectedAlbum.cover_url }
+                  : require("../../assets/image/bgrLogin.jpg")
+              }
+              style={styles.albumHeaderImage}
+            />
+            <Text style={styles.albumHeaderTitle}>{selectedAlbum.title}</Text>
+            <Text style={styles.albumHeaderSubtitle}>
+              Album • {displaySongs.length} bài hát
+            </Text>
+          </View>
+        )}
 
         {/* Loading */}
         {status === "loading" && (
@@ -75,16 +108,16 @@ const ListScreen = ({ onBack, onSongPress }) => {
         )}
 
         {/* Empty State */}
-        {status === "success" && songs.length === 0 && (
+        {status === "success" && displaySongs.length === 0 && (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>Chưa có bài hát nào</Text>
           </View>
         )}
 
         {/* SONG LIST */}
-        {status === "success" && songs.length > 0 && (
+        {status === "success" && displaySongs.length > 0 && (
           <View style={{ marginTop: 25 }}>
-            {songs.map((song) => {
+            {displaySongs.map((song) => {
               const isActive = false;
 
               return (
@@ -197,6 +230,34 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 32,
     marginBottom: 4,
+  },
+
+  /* Album Header Styles */
+  albumHeaderContainer: {
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  albumHeaderImage: {
+    width: 180,
+    height: 180,
+    borderRadius: 20,
+    marginBottom: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+  },
+  albumHeaderTitle: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  albumHeaderSubtitle: {
+    color: "#aaa",
+    fontSize: 14,
+    marginTop: 5,
   },
 
   songItem: {

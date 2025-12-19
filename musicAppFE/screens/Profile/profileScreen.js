@@ -94,7 +94,7 @@ const ProfileScreen = ({ onNavigateToAdmin }) => {
           <Text style={styles.rowArrow}>›</Text>
         </TouchableOpacity>
 
-        {/* ===== ADMIN BUTTON (CHỈ THÊM DÒNG NÀY) ===== */}
+        {/* ===== ADMIN BUTTON ===== */}
         <TouchableOpacity
           style={styles.row}
           onPress={onNavigateToAdmin}
@@ -107,6 +107,17 @@ const ProfileScreen = ({ onNavigateToAdmin }) => {
           </Text>
         </TouchableOpacity>
         {/* ========================================= */}
+         <TouchableOpacity
+          style={styles.row}
+        
+        >
+          <Text style={[styles.rowLabel, { color: "#ff0000ff" }]}>
+            Log Out
+          </Text>
+          <Text style={[styles.rowArrow, { color: "#ff0000ff" }]}>
+            ›
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );

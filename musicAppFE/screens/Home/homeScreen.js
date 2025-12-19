@@ -11,7 +11,7 @@ import {
 
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSongs } from "../../redux/slice/songSlice";
-import { fetchAlbums } from "../../redux/slice/albumSlice";
+import { fetchAlbums, selectAlbum } from "../../redux/slice/albumSlice";
 import supabase from "../../supabaseClient";
 
 import SearchIcon from "../../assets/icons/search.svg";
@@ -86,6 +86,24 @@ const HomeScreen = ({ onNavigateToList, onSongPress, onNavigateToSearch }) => {
           </Text>
         </TouchableOpacity>
 
+        {/* ERROR MESSAGE (Nếu có) */}
+        {(status === "failed" || albumsStatus === "failed") && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>
+              Không thể tải dữ liệu. Vui lòng kiểm tra kết nối server.
+            </Text>
+            <TouchableOpacity 
+              onPress={() => {
+                dispatch(fetchSongs());
+                dispatch(fetchAlbums());
+              }}
+              style={styles.retryButton}
+            >
+              <Text style={styles.retryText}>Thử lại</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* ALBUMS */}
         {albumsStatus === "loading" && (
           <ActivityIndicator
@@ -95,30 +113,41 @@ const HomeScreen = ({ onNavigateToList, onSongPress, onNavigateToSearch }) => {
           />
         )}
 
-        {albumsStatus === "success" && albums.length > 0 && (
-          <View style={styles.cardRow}>
-            {albums.slice(0, 6).map((album, index) => (
-              <View
-                key={album?.id || `album-${index}`}
-                style={styles.card}
-              >
-                <Image
-                  source={
-                    album.cover_url
-                      ? { uri: album.cover_url }
-                      : require("../../assets/image/bgrLogin.jpg")
-                  }
-                  style={styles.cardImage}
-                />
-                <Text style={styles.cardTitle} numberOfLines={1}>
-                  {album.title || "Không có tiêu đề"}
-                </Text>
-                <Text style={styles.cardSubtitle} numberOfLines={1}>
-                  {album.artist_id || "Nhiều nghệ sĩ"}
-                </Text>
-              </View>
-            ))}
-          </View>
+        {albumsStatus === "success" && Array.isArray(albums) && albums.length > 0 && (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            style={styles.cardScrollView}
+          >
+            <View style={styles.cardRow}>
+              {albums.slice(0, 10).map((album, index) => (
+                <TouchableOpacity
+                  key={album?.id || `album-${index}`}
+                  style={styles.card}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    dispatch(selectAlbum(album));
+                    onNavigateToList();
+                  }}
+                >
+                  <Image
+                    source={
+                      album.cover_url
+                        ? { uri: album.cover_url }
+                        : require("../../assets/image/bgrLogin.jpg")
+                    }
+                    style={styles.cardImage}
+                  />
+                  <Text style={styles.cardTitle} numberOfLines={1}>
+                    {album.title || "Không có tiêu đề"}
+                  </Text>
+                  <Text style={styles.cardSubtitle} numberOfLines={1}>
+                    {album.artists?.name || album.artist_id || "Nhiều nghệ sĩ"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
         )}
 
         {/* RECENT HEADER */}
@@ -210,7 +239,19 @@ const styles = StyleSheet.create({
   },
   searchInput: { marginLeft: 10, flex: 1 },
 
-  cardRow: { flexDirection: "row", gap: 15, marginBottom: 25 },
+  errorContainer: {
+    backgroundColor: "rgba(255, 68, 68, 0.1)",
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 20,
+    alignItems: "center",
+  },
+  errorText: { color: "#ff4444", fontSize: 13, textAlign: "center", marginBottom: 10 },
+  retryButton: { backgroundColor: "#24F7BC", paddingHorizontal: 20, paddingVertical: 8, borderRadius: 8 },
+  retryText: { color: "#000", fontWeight: "bold", fontSize: 13 },
+
+  cardScrollView: { marginBottom: 25 },
+  cardRow: { flexDirection: "row", gap: 15 },
   card: {
     backgroundColor: "#1C1F26",
     borderRadius: 15,

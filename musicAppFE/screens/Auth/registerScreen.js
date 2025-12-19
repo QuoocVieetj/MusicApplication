@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -13,8 +13,8 @@ import {
 } from "react-native";
 
 import { LinearGradient } from "expo-linear-gradient";
-import supabase from "../../supabaseClient";
-import { API_BASE_URL } from "../../config/apiConfig";
+import { useDispatch, useSelector } from "react-redux";
+import { register, clearError } from "../../redux/slice/authSlice";
 
 const bgImage = require("../../assets/image/bgrLogin.jpg");
 
@@ -76,9 +76,24 @@ const RegisterScreen = ({ onNavigateToLogin, onRegisterSuccess }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
+  const { loading, error, user } = useSelector((state) => state.auth);
 
-  const registerUser = async () => {
+  useEffect(() => {
+    if (user) {
+      Alert.alert("Thành công", "Tạo tài khoản thành công!");
+      onRegisterSuccess && onRegisterSuccess();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (error) {
+      Alert.alert("Lỗi", error || "Đăng ký thất bại");
+      dispatch(clearError());
+    }
+  }, [error]);
+
+  const registerUser = () => {
     if (!name || !email || !password) {
       Alert.alert("Lỗi", "Vui lòng nhập đầy đủ thông tin");
       return;
@@ -89,65 +104,7 @@ const RegisterScreen = ({ onNavigateToLogin, onRegisterSuccess }) => {
       return;
     }
 
-    try {
-      setLoading(true);
-
-      // 1) Tạo user trên Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email,
-        password: password,
-        options: {
-          data: {
-            display_name: name,
-          },
-        },
-      });
-
-      if (authError) {
-        throw new Error(authError.message);
-      }
-
-      const user = authData.user;
-      if (!user) {
-        throw new Error("Không thể tạo tài khoản");
-      }
-
-      // 2) Lấy access token từ session
-      const session = authData.session;
-      const accessToken = session?.access_token;
-
-      // 3) Gửi qua backend để lưu vào database
-      if (accessToken) {
-        const response = await fetch(`${API_BASE_URL}/api/users`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            userId: user.id,
-            displayName: name,
-            email: email,
-            avatarUrl: "",
-            likedSongs: [],
-            playlists: [],
-            createdAt: new Date().toISOString(),
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Không thể lưu user vào server");
-        }
-      }
-
-      Alert.alert("Thành công", "Tạo tài khoản thành công!");
-      onRegisterSuccess && onRegisterSuccess();
-
-    } catch (error) {
-      Alert.alert("Lỗi", error.message || "Đăng ký thất bại");
-    } finally {
-      setLoading(false);
-    }
+    dispatch(register({ name, email, password }));
   };
 
   return (
